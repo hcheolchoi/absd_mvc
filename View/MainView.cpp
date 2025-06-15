@@ -15,48 +15,48 @@
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma resource "*.dfm"
-TMainView *MainView;
+TForm1 *Form1;
 //---------------------------------------------------------------------------
-__fastcall TMainView::TMainView(TComponent* Owner)
+__fastcall TForm1::TForm1(TComponent* Owner)
     : TForm(Owner)
 {
     this->controller = nullptr;
     this->g_MouseDownMask = 0;
 }
 //---------------------------------------------------------------------------
-void TMainView::setController(AppController* controller)
+void TForm1::setController(AppController* controller)
 {
     this->controller = controller;
 }
 //---------------------------------------------------------------------------
-void TMainView::onModelUpdate()
+void TForm1::onModelUpdate()
 {
     OpenGLPanel1->Invalidate();
     ListView1->Update();
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::FormCreate(TObject *Sender)
+void __fastcall TForm1::FormCreate(TObject *Sender)
 {
     if (controller) {
         controller->onFormCreate();
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::FormDestroy(TObject *Sender)
+void __fastcall TForm1::FormDestroy(TObject *Sender)
 {
     if (controller) {
         controller->onFormDestroy();
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::OpenGLPanel1Paint(TObject *Sender)
+void __fastcall TForm1::OpenGLPanel1Paint(TObject *Sender)
 {
     if (controller) {
         controller->drawDisplay(OpenGLPanel1);
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::Timer1Timer(TObject *Sender)
+void __fastcall TForm1::Timer1Timer(TObject *Sender)
 {
     if (controller) {
         controller->onTimerTick();
@@ -84,21 +84,21 @@ void __fastcall TMainView::Timer1Timer(TObject *Sender)
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::ConnectButtonClick(TObject *Sender)
+void __fastcall TForm1::ConnectButtonClick(TObject *Sender)
 {
     if(controller) {
         controller->connect(IPAddress->Text, Port->Text.ToInt());
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::DisconnectButtonClick(TObject *Sender)
+void __fastcall TForm1::DisconnectButtonClick(TObject *Sender)
 {
     if(controller) {
         controller->disconnect();
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button,
+void __fastcall TForm1::OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button,
           TShiftState Shift, int X, int Y)
 {
     if (controller) {
@@ -106,7 +106,7 @@ void __fastcall TMainView::OpenGLPanel1MouseDown(TObject *Sender, TMouseButton B
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::OpenGLPanel1MouseMove(TObject *Sender, TShiftState Shift,
+void __fastcall TForm1::OpenGLPanel1MouseMove(TObject *Sender, TShiftState Shift,
           int X, int Y)
 {
     if (controller) {
@@ -114,7 +114,7 @@ void __fastcall TMainView::OpenGLPanel1MouseMove(TObject *Sender, TShiftState Sh
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::OpenGLPanel1MouseUp(TObject *Sender, TMouseButton Button,
+void __fastcall TForm1::OpenGLPanel1MouseUp(TObject *Sender, TMouseButton Button,
           TShiftState Shift, int X, int Y)
 {
     if (controller) {
@@ -122,7 +122,7 @@ void __fastcall TMainView::OpenGLPanel1MouseUp(TObject *Sender, TMouseButton But
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TMainView::Exit1Click(TObject *Sender)
+void __fastcall TForm1::Exit1Click(TObject *Sender)
 {
     Close();
 }

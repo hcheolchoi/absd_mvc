@@ -1,9 +1,9 @@
-﻿// View/MainView.h
+﻿// View/Form1.h
 
 //---------------------------------------------------------------------------
 
-#ifndef MainViewH
-#define MainViewH
+#ifndef Form1H
+#define Form1H
 //---------------------------------------------------------------------------
 #include <System.Classes.hpp>
 #include <Vcl.Controls.hpp>
@@ -25,8 +25,8 @@ class AppController;
 #include "Controller/AppController.h"
 
 //---------------------------------------------------------------------------
-// TMainView 클래스가 IModelObserver 인터페이스를 상속받습니다.
-class TMainView : public TForm, public IModelObserver
+// TForm1 클래스가 IModelObserver 인터페이스를 상속받습니다.
+class TForm1 : public TForm, public IModelObserver
 {
 __published:	// IDE-managed Components
 	TMainMenu *MainMenu1;
@@ -97,7 +97,7 @@ private:	// User declarations
 	int g_MouseDownMask;
 
 public:		// User declarations
-	__fastcall TMainView(TComponent* Owner);
+	__fastcall TForm1(TComponent* Owner);
 
 	// ADSB_MVC.cpp에서 Controller를 주입하기 위한 메소드
 	void setController(AppController* controller);
@@ -107,6 +107,6 @@ public:		// User declarations
 	void onModelUpdate() override;
 };
 //---------------------------------------------------------------------------
-extern PACKAGE TMainView *MainView;
+extern PACKAGE TForm1 *Form1;
 //---------------------------------------------------------------------------
 #endif

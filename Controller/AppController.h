@@ -17,7 +17,7 @@
 // 전방 선언: 포인터로만 사용하는 타입들
 class TOpenGLPanel;
 class AircraftModel;
-class TMainView;
+class TForm1;
 class NetworkService;
 class DataParser;
 class EarthView;
@@ -26,7 +26,7 @@ class TileManager;
 class AppController {
 private:
     AircraftModel* model;
-    TMainView* view;
+    TForm1* view;
 
     std::unique_ptr<NetworkService> networkService;
     std::unique_ptr<DataParser> dataParser;
@@ -44,7 +44,7 @@ private:
     void onDataReceived(const std::vector<char>& data);
 
 public:
-    AppController(AircraftModel* model, TMainView* view);
+    AppController(AircraftModel* model, TForm1* view);
     ~AppController();
 
     void onFormCreate();

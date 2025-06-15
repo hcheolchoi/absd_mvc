@@ -20,7 +20,7 @@
 #include <gl/gl.h>
 
 
-AppController::AppController(AircraftModel* model, TMainView* view)
+AppController::AppController(AircraftModel* model, TForm1* view)
     : model(model), view(view), g_EarthView(nullptr), g_GETileManager(nullptr),
       g_MouseDownMask(0), g_MouseLeftDownX(0), g_MouseLeftDownY(0)
 {
