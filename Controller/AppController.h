@@ -1,65 +1,51 @@
 // Controller/AppController.h
 
-#ifndef AppControllerH
-#define AppControllerH
+#ifndef AppController_h
+#define AppController_h
 
-// 1. 가장 중요한 TADS_B_Aircraft의 정의를 최상단에 포함시킵니다.
-#include "Model/Aircraft.h"
-
-// 2. 그 다음 C++ 표준 라이브러리를 포함합니다.
-#include <memory>
+#include "AircraftModel.h"
+#include "NetworkService.h"
+#include "DataParser.h"
 #include <vector>
+#include <string>
 
-// 3. 마지막으로 VCL 및 기타 라이브러리 헤더를 포함합니다.
-#include <System.Classes.hpp>
-#include <Vcl.Controls.hpp>
+// View(TForm1)에 데이터 렌더링을 위해 전달될 간단한 항공기 정보 구조체 (DTO)
+struct AircraftInfo
+{
+	double lat;
+	double lon;
+	double altitude;
+	unsigned int icao;
+	std::string callsign;
+	bool selected;
+};
 
-// 전방 선언: 포인터로만 사용하는 타입들
-class TOpenGLPanel;
-class AircraftModel;
-class TForm1;
-class NetworkService;
-class DataParser;
-class EarthView;
-class TileManager;
 
-class AppController {
+class TForm1; // Forward declaration (TMainForm -> TForm1)
+
+class AppController
+{
 private:
-    AircraftModel* model;
-    TForm1* view;
+	AircraftModel* theModel;
+	NetworkService* networkService;
+	TForm1* theView; // Controller가 View를 알고 있도록 참조를 추가 (TMainForm* -> TForm1*)
 
-    std::unique_ptr<NetworkService> networkService;
-    std::unique_ptr<DataParser> dataParser;
-
-    EarthView* g_EarthView;
-    TileManager* g_GETileManager;
-    double mapCenterLat;
-    double mapCenterLon;
-
-    int g_MouseLeftDownX;
-    int g_MouseLeftDownY;
-    int g_MouseDownMask;
-
-    void initializeMap();
-    void onDataReceived(const std::vector<char>& data);
+	void loadAircraftData();
 
 public:
-    AppController(AircraftModel* model, TForm1* view);
-    ~AppController();
+	AppController(TForm1* view); // 생성자 인자 변경 (TMainForm* -> TForm1*)
+	~AppController();
 
-    void onFormCreate();
-    void onFormDestroy();
-    void connect(const String& ip, int port);
-    void disconnect();
-    void onTimerTick();
+	void start();
+	void onTimer(); // View의 타이머 이벤트가 호출할 함수
 
-    // 이 함수가 TADS_B_Aircraft의 전체 정의를 필요로 합니다.
-    void getAllAircraft(std::vector<TADS_B_Aircraft>& list);
+	// --- View가 호출할 함수들 ---
+	int getAircraftCount();
+	AircraftInfo getAircraftInfo(int index);
+	void selectAircraft(unsigned int icao);
+	std::string getSelectedAircraftInfoText();
 
-    void drawDisplay(TOpenGLPanel* panel);
-    void onMouseDown(TMouseButton Button, TShiftState Shift, int X, int Y);
-    void onMouseMove(TShiftState Shift, int X, int Y);
-    void onMouseUp(TMouseButton Button, TShiftState Shift, int X, int Y);
+
 };
 
 #endif

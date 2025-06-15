@@ -4,26 +4,29 @@
 #define AircraftModelH
 
 #include <vector>
-#include "Model/Aircraft.h"
-#include "Model/IModelObserver.h"
-#include "HashTable/Lib/ght_hash_table.h"
+#include "IModelObserver.h"
+#include "Aircraft.h" // 'TADS_B_Aircraft' or 'Aircraft' unknown type name 오류 해결
 
 class AircraftModel {
 private:
-    ght_hash_table_t* HashTable;
-    std::vector<IModelObserver*> observers;
-    void notifyObservers();
+	// TADS_B_Aircraft -> Aircraft 로 클래스명이 변경되었을 수 있으므로 확인 필요
+	std::vector<Aircraft> aircrafts;
+	std::vector<IModelObserver*> observers;
+	Aircraft* selectedAircraft;
+
+	void notifyObservers();
 
 public:
-    AircraftModel();
-    ~AircraftModel();
+	AircraftModel();
+	void addObserver(IModelObserver* observer);
+	void removeObserver(IModelObserver* observer);
 
-    void registerObserver(IModelObserver* observer);
-    void addOrUpdateAircraft(const TADS_B_Aircraft& aircraft);
-    bool updateAircraftStatus();
+	void updateAircrafts(const std::vector<Aircraft>& newAircrafts);
+	int getAircraftCount() const;
+	const Aircraft* getAircraft(int index) const;
 
-    // === 변경된 부분: 벡터를 참조로 받아 내용을 채워줌 ===
-    void getAllAircraft(std::vector<TADS_B_Aircraft>& list);
+	void selectAircraft(unsigned int icao);
+	const Aircraft* getSelectedAircraft() const;
 };
 
 #endif

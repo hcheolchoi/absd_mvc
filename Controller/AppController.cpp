@@ -2,161 +2,107 @@
 
 #pragma hdrstop
 
-#include "Controller/AppController.h"
+#include "AppController.h"
+#include "MainView.h" // TForm1의 전체 정의를 위해 필요
+#include "DataParser.h"
+#include <sstream>
+#include <iomanip>
 
-// .cpp 파일에서는 사용하는 모든 클래스의 전체 정의를 포함해야 합니다.
-#include "Model/AircraftModel.h"
-#include "View/MainView.h"
-#include "Controller/NetworkService.h"
-#include "Controller/DataParser.h"
-#include "Component/OpenGLPanel.h"
-#include "Utils/ntds2d.h"
-#include "Utils/TimeFunctions.h"
-#include "Map/MapSrc/FlatEarthView.h"
-#include "Map/MapSrc/TileManager.h"
-#include "Map/MapSrc/FileSystemStorage.h"
-#include "Map/MapSrc/MapProvider/GoogleMapsProvider.h"
-#include "Map/MapSrc/Layer.h"
-#include <gl/gl.h>
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
 
-
-AppController::AppController(AircraftModel* model, TForm1* view)
-    : model(model), view(view), g_EarthView(nullptr), g_GETileManager(nullptr),
-      g_MouseDownMask(0), g_MouseLeftDownX(0), g_MouseLeftDownY(0)
+AppController::AppController(TForm1* view) // 생성자 인자 변경 (TMainForm* -> TForm1*)
+: theView(view), networkService(nullptr)
 {
-    networkService = std::make_unique<NetworkService>();
-    networkService->setDataCallback([this](const std::vector<char>& data) {
-        this->onDataReceived(data);
-    });
-    dataParser = std::make_unique<DataParser>();
+	theModel = new AircraftModel();
+	networkService = new NetworkService();
+
+	// Model에 View(Observer)를 등록하는 작업을 Controller가 수행
+	theModel->addObserver(theView);
 }
 
 AppController::~AppController()
 {
-    if (g_GETileManager) delete g_GETileManager;
-    if (g_EarthView) delete g_EarthView;
+	theModel->removeObserver(theView);
+	delete theModel;
+	delete networkService;
 }
 
-void AppController::onDataReceived(const std::vector<char>& data)
+void AppController::start()
 {
-    auto parsedAircraft = dataParser->parse(data);
-    if (parsedAircraft.has_value()) {
-        model->addOrUpdateAircraft(parsedAircraft.value());
-    }
+	loadAircraftData();
 }
 
-void AppController::onFormCreate()
+void AppController::onTimer()
 {
-    initializeMap();
-    MakeAirplaneImages();
+    // 주기적으로 데이터를 로드
+	loadAircraftData();
 }
 
-void AppController::onFormDestroy()
+
+void AppController::loadAircraftData()
 {
+	std::string jsonData = networkService->fetchData();
+	if (!jsonData.empty())
+	{
+		std::vector<Aircraft> aircrafts = DataParser::parse(jsonData);
+		theModel->updateAircrafts(aircrafts);
+	}
 }
 
-void AppController::connect(const String& ip, int port)
+// --- View가 호출할 함수들의 구현부 ---
+
+int AppController::getAircraftCount()
 {
-    if (networkService) {
-        networkService->connect(ip, port);
-    }
+	if(theModel)
+	{
+		return theModel->getAircraftCount();
+	}
+	return 0;
 }
 
-void AppController::disconnect()
+AircraftInfo AppController::getAircraftInfo(int index)
 {
-    if (networkService) {
-        networkService->disconnect();
-    }
+	AircraftInfo info = {}; // 0으로 초기화
+	if (theModel)
+	{
+		const Aircraft* ac = theModel->getAircraft(index);
+		if (ac)
+		{
+			info.lat = ac->lat;
+			info.lon = ac->lon;
+			info.altitude = ac->altitude;
+			info.icao = ac->icao24;
+			info.callsign = ac->callsign;
+			info.selected = ac->selected;
+		}
+	}
+	return info;
 }
 
-void AppController::getAllAircraft(std::vector<TADS_B_Aircraft>& list)
+void AppController::selectAircraft(unsigned int icao)
 {
-    if (model) {
-        model->getAllAircraft(list);
-    } else {
-        list.clear();
-    }
+	if(theModel)
+	{
+		theModel->selectAircraft(icao);
+	}
 }
 
-void AppController::onTimerTick()
+std::string AppController::getSelectedAircraftInfoText()
 {
-    if (model) {
-        model->updateAircraftStatus();
-    }
-    if (g_EarthView) {
-        g_EarthView->Update();
-    }
-}
+	if (!theModel) return "";
 
-void AppController::initializeMap()
-{
-    mapCenterLat = 40.73612;
-    mapCenterLon = -80.33158;
-    g_EarthView = new FlatEarthView();
-    g_EarthView->SetScreenSize(800, 600);
-    g_EarthView->SetViewPoint(mapCenterLat, mapCenterLon, 2.0);
-    IMAPProvider *provider = new GoogleMapsProvider(IMAPProvider::Satellite);
-    Layer *layer = new Layer(provider);
-    g_EarthView->AddLayer(layer);
-    g_GETileManager = new TileManager(g_EarthView, new FileSystemStorage(L"C:\\Tiles"));
-}
-
-void AppController::drawDisplay(TOpenGLPanel* panel)
-{
-    if (!g_EarthView) return;
-
-    panel->MakeCurrent();
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glLoadIdentity();
-
-    g_EarthView->SetScreenSize(panel->Width, panel->Height);
-    g_EarthView->Draw();
-
-    BeginAirplaneBatch();
-    if (model) {
-        std::vector<TADS_B_Aircraft> aircraftList;
-        model->getAllAircraft(aircraftList);
-
-        for (std::vector<TADS_B_Aircraft>::iterator it = aircraftList.begin(); it != aircraftList.end(); ++it) {
-            const TADS_B_Aircraft& aircraft = *it;
-            if (aircraft.HaveLatLon) {
-                double screenX, screenY;
-                g_EarthView->GetScreenPos(aircraft.Latitude, aircraft.Longitude, screenX, screenY);
-                if (screenX >= 0 && screenY >= 0) {
-                     BatchAirplane(screenX, screenY, 1.0, aircraft.Heading, aircraft.SpriteImage, 1,1,0,1);
-                }
-            }
-        }
-    }
-    RenderAirplaneBatch();
-
-    panel->SwapBuffers();
-}
-
-void AppController::onMouseDown(TMouseButton Button, TShiftState Shift, int X, int Y)
-{
-    if (Button == mbLeft) {
-        g_MouseDownMask |= 1;
-        g_MouseLeftDownX = X;
-        g_MouseLeftDownY = Y;
-    }
-}
-
-void AppController::onMouseMove(TShiftState Shift, int X, int Y)
-{
-    if ((g_MouseDownMask & 1) && g_EarthView) {
-        double dx = g_MouseLeftDownX - X;
-        double dy = g_MouseLeftDownY - Y;
-        g_EarthView->Move(dx, dy);
-        g_MouseLeftDownX = X;
-        g_MouseLeftDownY = Y;
-        view->onModelUpdate();
-    }
-}
-
-void AppController::onMouseUp(TMouseButton Button, TShiftState Shift, int X, int Y)
-{
-    if (Button == mbLeft) {
-        g_MouseDownMask &= ~1;
-    }
+	const Aircraft* ac = theModel->getSelectedAircraft();
+	if (ac)
+	{
+		std::stringstream ss;
+		ss << "Callsign: " << ac->callsign << "\n"
+		   << "ICAO24: " << std::hex << ac->icao24 << std::dec << "\n"
+		   << "Origin: " << ac->origin_country << "\n"
+		   << "Altitude: " << static_cast<int>(ac->altitude) << " m\n"
+		   << "Latitude: " << std::fixed << std::setprecision(4) << ac->lat << "\n"
+		   << "Longitude: " << std::fixed << std::setprecision(4) << ac->lon;
+		return ss.str();
+	}
+	return "No aircraft selected.";
 }

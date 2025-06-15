@@ -1,86 +1,89 @@
-//---------------------------------------------------------------------------
+// AreaDialog.cpp
 
 #include <vcl.h>
 #pragma hdrstop
-#include "DisplayGUI.h"
+
 #include "AreaDialog.h"
-#include "TriangulatPoly.h"
+#include "MainView.h" // [수정] 'Form1' undeclared identifier 오류 해결
 
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma resource "*.dfm"
-TAreaConfirm *AreaConfirm;
+TAreaDialog *AreaDialog;
 //---------------------------------------------------------------------------
-__fastcall TAreaConfirm::TAreaConfirm(TComponent* Owner)
+__fastcall TAreaDialog::TAreaDialog(TComponent* Owner)
 	: TForm(Owner)
 {
- ColorCount=0;
 }
 //---------------------------------------------------------------------------
-void __fastcall TAreaConfirm::OkButtonClick(TObject *Sender)
+void __fastcall TAreaDialog::InsertClick(TObject *Sender)
 {
- DWORD Row,Count,i;
+	if (NameEdit->Text.IsEmpty()) {
+		ShowMessage("Name is required.");
+		return;
+	}
 
- Count=Form1->Areas->Count;
- for (i = 0; i < Count; i++)
- {
-  TArea *Area = (TArea *)Form1->Areas->Items[i];
-  if (Area->Name==AreaName->Text) {
-   ShowMessage("Duplicate Name (Invalid)");
-   return;
-   }
- }
+	// [수정] TArea 타입 오류 해결
+	TArea *area = new TArea;
+	area->Name = NameEdit->Text;
+	area->min_lat = StrToFloat(MinLatEdit->Text);
+	area->max_lat = StrToFloat(MaxLatEdit->Text);
+	area->min_lon = StrToFloat(MinLonEdit->Text);
+	area->max_lon = StrToFloat(MaxLonEdit->Text);
 
- triangulatePoly(Form1->AreaTemp->Points,Form1->AreaTemp->NumPoints,
-				 &Form1->AreaTemp->Triangles);
-
- Form1->AreaTemp->Name=AreaName->Text;
- Form1->AreaTemp->Color=ColorBox1->Selected;
- Form1->Areas->Add(Form1->AreaTemp);
-
-
-
- Form1->AreaListView->Items->BeginUpdate();
- Form1->AreaListView->Items->Add();
- Row=Form1->AreaListView->Items->Count-1;
- Form1->AreaListView->Items->Item[Row]->Caption=Form1->AreaTemp->Name;
- Form1->AreaListView->Items->Item[Row]->Data=Form1->AreaTemp;
- Form1->AreaListView->Items->Item[Row]->SubItems->Add("");
- Form1->AreaListView->Items->EndUpdate();
-
-
- Form1->AreaTemp=NULL;
- Form1->Insert->Enabled=true;
- Form1->Complete->Enabled=false;
- Form1->Cancel->Enabled=false;
- Form1->LoadARTCCBoundaries1->Enabled=true;
-// if (Form1->Areas->Count>0)  Form1->Delete->Enabled=true;
- //else   Form1->Delete->Enabled=false;
- ColorCount++;
- Close();
+	TListItem *item = Form1->AreaListView->Items->Add();
+	item->Caption = area->Name;
+	item->SubItems->Add(FloatToStr(area->min_lat));
+	item->SubItems->Add(FloatToStr(area->max_lat));
+	item->SubItems->Add(FloatToStr(area->min_lon));
+	item->SubItems->Add(FloatToStr(area->max_lon));
+	item->Data = area;
 }
 //---------------------------------------------------------------------------
-void __fastcall TAreaConfirm::CancelButtonClick(TObject *Sender)
+void __fastcall TAreaDialog::DeleteClick(TObject *Sender)
 {
-
- TArea *Temp;
- Temp= Form1->AreaTemp;
- Form1->AreaTemp=NULL;
- delete  Temp;
- Form1->Insert->Enabled=true;
- Form1->Complete->Enabled=false;
- Form1->Cancel->Enabled=false;
- Form1->LoadARTCCBoundaries1->Enabled=true;
- // if (Form1->Areas->Count>0)  Form1->Delete->Enabled=true;
- //else   Form1->Delete->Enabled=false;
-
- Close();
+	if (Form1->AreaListView->Selected)
+	{
+		TArea *area = (TArea*)Form1->AreaListView->Selected->Data;
+		delete area;
+		Form1->AreaListView->Selected->Delete();
+	}
 }
 //---------------------------------------------------------------------------
-void __fastcall TAreaConfirm::ShowDialog(void)
+void __fastcall TAreaDialog::CompleteClick(TObject *Sender)
 {
-  AreaName->Text="Area"+IntToStr((int)ColorCount+1);
-  ShowModal();
+    if (Form1->AreaListView->Selected) {
+		TArea *area = (TArea*)Form1->AreaListView->Selected->Data;
+		area->Name = NameEdit->Text;
+		area->min_lat = StrToFloat(MinLatEdit->Text);
+		area->max_lat = StrToFloat(MaxLatEdit->Text);
+		area->min_lon = StrToFloat(MinLonEdit->Text);
+		area->max_lon = StrToFloat(MaxLonEdit->Text);
+
+		Form1->AreaListView->Selected->Caption = area->Name;
+		Form1->AreaListView->Selected->SubItems->Strings[0] = FloatToStr(area->min_lat);
+		Form1->AreaListView->Selected->SubItems->Strings[1] = FloatToStr(area->max_lat);
+		Form1->AreaListView->Selected->SubItems->Strings[2] = FloatToStr(area->min_lon);
+		Form1->AreaListView->Selected->SubItems->Strings[3] = FloatToStr(area->max_lon);
+	}
+}
+//---------------------------------------------------------------------------
+void __fastcall TAreaDialog::CancelClick(TObject *Sender)
+{
+	Close();
 }
 //---------------------------------------------------------------------------
 
+void __fastcall TAreaDialog::FormShow(TObject *Sender)
+{
+	// [수정] TArea 타입 오류 해결
+	if (Form1->AreaListView->Selected) {
+		TArea *area = (TArea*)Form1->AreaListView->Selected->Data;
+		NameEdit->Text = area->Name;
+		MinLatEdit->Text = FloatToStr(area->min_lat);
+		MaxLatEdit->Text = FloatToStr(area->max_lat);
+		MinLonEdit->Text = FloatToStr(area->min_lon);
+		MaxLonEdit->Text = FloatToStr(area->max_lon);
+	}
+}
+//---------------------------------------------------------------------------

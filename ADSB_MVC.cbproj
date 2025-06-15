@@ -177,6 +177,7 @@
         <LinkPackageImports>rtl.bpi;vcl.bpi;VclSmp.bpi;vclx.bpi;IndySystem.bpi;IndyCore.bpi;bcbsmp.bpi;OpenGLPanel_DP.bpi;vclimg.bpi</LinkPackageImports>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
+        <IncludePath>C:\Users\pcuser\Documents\LG\ADSB_FINAL\Utils;$(IncludePath)</IncludePath>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
@@ -217,7 +218,7 @@
         </CppCompile>
         <CppCompile Include="Utils\LatLonConv.cpp">
             <DependentOn>Utils\LatLonConv.h</DependentOn>
-            <BuildOrder>10</BuildOrder>
+            <BuildOrder>14</BuildOrder>
         </CppCompile>
         <CppCompile Include="Utils\ntds2d.cpp">
             <DependentOn>Utils\ntds2d.h</DependentOn>

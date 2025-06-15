@@ -1,129 +1,161 @@
 ﻿// View/MainView.cpp
 
-//---------------------------------------------------------------------------
 #include <vcl.h>
 #pragma hdrstop
 
-#include "View/MainView.h"
-#include "Controller/AppController.h"
+#include "MainView.h"
+#include "AppController.h"
+#include <gl\gl.h>
+#include <gl\glu.h>
 
-// === 바로 아래 두 줄이 이 문제의 유일하고 정확한 해결책입니다 ===
-#include "Model/Aircraft.h" // TADS_B_Aircraft 구조체의 전체 정의를 포함
-#include <vector>           // std::vector의 멤버(iterator, begin, end)를 사용하기 위해 포함
-// ========================================================
+// =========================================================================
+// LatLonConv 클래스 직접 삽입 시작
+// -------------------------------------------------------------------------
+// 설명: 컴파일러가 LatLonConv.h를 찾지 못하는 문제를 해결하기 위해,
+//       클래스 선언과 구현을 이 파일에 직접 포함시킵니다.
+// =========================================================================
+
+class LatLonConv {
+public:
+    // 위도, 경도 좌표를 화면의 X, Y 좌표로 변환하는 static 함수
+    static void convert(double lat, double lon, double& x, double& y, int width, int height);
+};
+
+// LatLonConv 클래스의 convert 함수 구현
+void LatLonConv::convert(double lat, double lon, double& x, double& y, int width, int height) {
+    // 간단한 구면 좌표계-평면 좌표계 변환 공식 (Mercator projection 유사)
+    x = (lon + 180.0) * (static_cast<double>(width) / 360.0);
+    y = (90.0 - lat) * (static_cast<double>(height) / 180.0);
+}
+
+// =========================================================================
+// LatLonConv 클래스 직접 삽입 끝
+// =========================================================================
+
 
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
+#pragma link "cspin"
 #pragma resource "*.dfm"
 TForm1 *Form1;
+
 //---------------------------------------------------------------------------
 __fastcall TForm1::TForm1(TComponent* Owner)
-    : TForm(Owner)
+	: TForm(Owner)
 {
-    this->controller = nullptr;
-    this->g_MouseDownMask = 0;
 }
-//---------------------------------------------------------------------------
-void TForm1::setController(AppController* controller)
-{
-    this->controller = controller;
-}
-//---------------------------------------------------------------------------
-void TForm1::onModelUpdate()
-{
-    OpenGLPanel1->Invalidate();
-    ListView1->Update();
-}
+
 //---------------------------------------------------------------------------
 void __fastcall TForm1::FormCreate(TObject *Sender)
 {
-    if (controller) {
-        controller->onFormCreate();
-    }
+	theController = new AppController(this);
+	theController->start();
 }
+
 //---------------------------------------------------------------------------
-void __fastcall TForm1::FormDestroy(TObject *Sender)
+__fastcall TForm1::~TForm1()
 {
-    if (controller) {
-        controller->onFormDestroy();
-    }
+	delete theController;
 }
+
 //---------------------------------------------------------------------------
-void __fastcall TForm1::OpenGLPanel1Paint(TObject *Sender)
+void __fastcall TForm1::Update()
 {
-    if (controller) {
-        controller->drawDisplay(OpenGLPanel1);
-    }
+	Memo1->Text = AnsiString(theController->getSelectedAircraftInfoText().c_str());
+	OpenGLPanel1->Invalidate();
 }
+
 //---------------------------------------------------------------------------
 void __fastcall TForm1::Timer1Timer(TObject *Sender)
 {
-    if (controller) {
-        controller->onTimerTick();
+	if (theController)
+	{
+		theController->onTimer();
+	}
+}
 
-        ListView1->Items->BeginUpdate();
-        ListView1->Items->Clear();
+//---------------------------------------------------------------------------
+void __fastcall TForm1::OpenGLPanel1Paint(TObject *Sender)
+{
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, OpenGLPanel1->Width, OpenGLPanel1->Height, 0, -1, 1);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 
-        std::vector<TADS_B_Aircraft> aircraftList;
-        controller->getAllAircraft(aircraftList);
+	DrawAircrafts();
+	DrawLabels();
 
-        for (std::vector<TADS_B_Aircraft>::iterator it = aircraftList.begin(); it != aircraftList.end(); ++it) {
-            const TADS_B_Aircraft& aircraft = *it;
-            TListItem *item = ListView1->Items->Add();
+	SwapBuffers(GetDC(OpenGLPanel1->Handle));
+}
 
-            // char[] 배열을 VCL String 타입으로 변환
-            item->Caption = AnsiString(aircraft.HexAddr);
-            item->SubItems->Add(AnsiString(aircraft.FlightNum));
-            item->SubItems->Add(IntToStr((int)aircraft.Altitude));
-            item->SubItems->Add(FloatToStrF(aircraft.Speed, ffFixed, 8, 2));
-            item->SubItems->Add(FloatToStrF(aircraft.Heading, ffFixed, 8, 2));
-            item->SubItems->Add(FloatToStrF(aircraft.Latitude, ffFixed, 8, 6));
-            item->SubItems->Add(FloatToStrF(aircraft.Longitude, ffFixed, 8, 6));
-        }
-        ListView1->Items->EndUpdate();
-    }
+//---------------------------------------------------------------------------
+void TForm1::DrawAircrafts()
+{
+	if (!theController) return;
+
+	int count = theController->getAircraftCount();
+
+	for (int i = 0; i < count; ++i)
+	{
+		AircraftInfo acInfo = theController->getAircraftInfo(i);
+
+		if (acInfo.icao != 0)
+		{
+			double screenX, screenY;
+			// 이제 이 함수 호출은 같은 파일 안에 있는 LatLonConv 클래스를 사용하므로
+			// 절대적으로 안전합니다.
+			LatLonConv::convert(acInfo.lat, acInfo.lon, screenX, screenY,
+								OpenGLPanel1->Width, OpenGLPanel1->Height);
+
+			if (acInfo.selected) {
+				glColor3f(1.0, 1.0, 0.0); // Yellow
+			} else {
+				glColor3f(0.0, 1.0, 0.0); // Green
+			}
+
+			glBegin(GL_QUADS);
+			glVertex2f(screenX - 5, screenY - 5);
+			glVertex2f(screenX + 5, screenY - 5);
+			glVertex2f(screenX + 5, screenY + 5);
+			glVertex2f(screenX - 5, screenY + 5);
+			glEnd();
+		}
+	}
 }
 //---------------------------------------------------------------------------
-void __fastcall TForm1::ConnectButtonClick(TObject *Sender)
+void TForm1::DrawLabels()
 {
-    if(controller) {
-        controller->connect(IPAddress->Text, Port->Text.ToInt());
-    }
 }
-//---------------------------------------------------------------------------
-void __fastcall TForm1::DisconnectButtonClick(TObject *Sender)
-{
-    if(controller) {
-        controller->disconnect();
-    }
-}
+
 //---------------------------------------------------------------------------
 void __fastcall TForm1::OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button,
           TShiftState Shift, int X, int Y)
 {
-    if (controller) {
-        controller->onMouseDown(Button, Shift, X, Y);
-    }
-}
-//---------------------------------------------------------------------------
-void __fastcall TForm1::OpenGLPanel1MouseMove(TObject *Sender, TShiftState Shift,
-          int X, int Y)
-{
-    if (controller) {
-        controller->onMouseMove(Shift, X, Y);
-    }
-}
-//---------------------------------------------------------------------------
-void __fastcall TForm1::OpenGLPanel1MouseUp(TObject *Sender, TMouseButton Button,
-          TShiftState Shift, int X, int Y)
-{
-    if (controller) {
-        controller->onMouseUp(Button, Shift, X, Y);
-    }
-}
-//---------------------------------------------------------------------------
-void __fastcall TForm1::Exit1Click(TObject *Sender)
-{
-    Close();
+	if (!theController) return;
+
+	int count = theController->getAircraftCount();
+	unsigned int selectedIcao = 0;
+
+	for (int i = 0; i < count; ++i)
+	{
+		AircraftInfo acInfo = theController->getAircraftInfo(i);
+
+		if(acInfo.icao != 0)
+		{
+			double screenX, screenY;
+			LatLonConv::convert(acInfo.lat, acInfo.lon, screenX, screenY,
+								OpenGLPanel1->Width, OpenGLPanel1->Height);
+
+			if (X >= screenX - 5 && X <= screenX + 5 && Y >= screenY - 5 && Y <= screenY + 5)
+			{
+				selectedIcao = acInfo.icao;
+				break;
+			}
+		}
+	}
+	theController->selectAircraft(selectedIcao);
 }
 //---------------------------------------------------------------------------
