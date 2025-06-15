@@ -1,27 +1,47 @@
-#ifndef NetworkService_H
-#define NetworkService_H
+// Controller/NetworkService.h
 
-#include <IdTCPClient.hpp> // Vcl.Sockets.hpp ´ë½Å »ç¿ë
-#include <string>
+#ifndef NetworkServiceH
+#define NetworkServiceH
+
 #include <functional>
+#include <vector>
+#include <memory>
+#include <IdTCPClient.hpp>
+#include <System.Classes.hpp> // TThread
 
-class NetworkService {
-public:
-    using DataReceivedCallback = std::function<void(const std::string&)>;
+class NetworkService; // ì „ë°© ì„ ì–¸
 
-    NetworkService(TComponent* owner, DataReceivedCallback callback);
-    ~NetworkService();
-
-    void connect(const std::string& host, int port);
-    void disconnect();
-    bool isConnected();
-
-    // µ¥ÀÌÅÍ¸¦ ÀĞ´Â ·ÎÁ÷Àº ÄÁÆ®·Ñ·¯ÀÇ º°µµ ½º·¹µå¿¡¼­ Ã³¸®
-    void checkForData();
-
+// ìŠ¤ë ˆë“œ í´ë˜ìŠ¤: ì´ì œ ë¶€ëª¨ NetworkServiceì˜ í¬ì¸í„°ë¥¼ ë°›ìŒ
+class TTCPClientRawHandleThread : public TThread
+{
 private:
-    TIdTCPClient* idTcpClient_;
-    DataReceivedCallback onDataReceived_;
+    TIdTCPClient *TCPClient;
+    NetworkService* parentService; // ë¶€ëª¨ í¬ì¸í„°
+
+protected:
+    void __fastcall Execute();
+
+public:
+    __fastcall TTCPClientRawHandleThread(TIdTCPClient *AClient, NetworkService* parent);
 };
 
-#endif // NetworkService_H
+
+class NetworkService {
+private:
+    std::unique_ptr<TIdTCPClient> tcpClient;
+    TTCPClientRawHandleThread* clientThread;
+    std::function<void(const std::vector<char>&)> onDataCallback;
+
+public:
+    NetworkService();
+    ~NetworkService();
+
+    void setDataCallback(std::function<void(const std::vector<char>&)> cb);
+    void connect(const String& ip, int port);
+    void disconnect();
+
+    // ìŠ¤ë ˆë“œê°€ ë°ì´í„°ë¥¼ ìˆ˜ì‹ í–ˆì„ ë•Œ í˜¸ì¶œí•  public ë©”ì†Œë“œ
+    void onRawDataReceived(const std::vector<char>& data);
+};
+
+#endif

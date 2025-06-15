@@ -1,52 +1,90 @@
+// Controller/NetworkService.cpp
+
 #pragma hdrstop
-#include "NetworkService.h"
-#include <System.SysUtils.hpp>
-#pragma package(smart_init)
 
-NetworkService::NetworkService(TComponent* owner, DataReceivedCallback callback)
-    : onDataReceived_(callback) {
-    idTcpClient_ = new TIdTCPClient(owner);
-    // Indy´Â ºí·ÎÅ· ¹æ½ÄÀ¸·Î µ¿ÀÛÇÏ¹Ç·Î OnRead °°Àº ÀÌº¥Æ® ÇÚµé·¯´Â
-    // Å¬¶óÀÌ¾ğÆ® Ãø¿¡¼­´Â Á¶±İ ´Ù¸£°Ô »ç¿ëµË´Ï´Ù. ¿©±â¼­´Â ´Ü¼øÈ­ÇÕ´Ï´Ù.
+#include "Controller/NetworkService.h"
+
+// --- TTCPClientRawHandleThread ---
+__fastcall TTCPClientRawHandleThread::TTCPClientRawHandleThread(TIdTCPClient *AClient, NetworkService* parent)
+    : TThread(false), TCPClient(AClient), parentService(parent) // ë¶€ëª¨ í¬ì¸í„° ì €ì¥
+{
 }
 
-NetworkService::~NetworkService() {
-    delete idTcpClient_;
-}
-
-void NetworkService::connect(const std::string& host, int port) {
-    if (!idTcpClient_->Connected()) {
-        idTcpClient_->Host = host.c_str();
-        idTcpClient_->Port = port;
-        try {
-            idTcpClient_->Connect();
-        } catch (const EIdException &e) {
-            // ¿¬°á ¿À·ù Ã³¸® (¿¹: ShowMessage)
+void __fastcall TTCPClientRawHandleThread::Execute()
+{
+    std::vector<char> buffer(2048);
+    while (!Terminated)
+    {
+        if (TCPClient && TCPClient->IOHandler && TCPClient->Connected())
+        {
+            try {
+                int bytesRead = TCPClient->IOHandler->ReadBytes(buffer, buffer.size(), false);
+                if (bytesRead > 0)
+                {
+                    // ë¶€ëª¨ì˜ ë©”ì†Œë“œë¥¼ ì§ì ‘ í˜¸ì¶œ
+                    if (parentService) {
+                         std::vector<char> receivedData(buffer.begin(), buffer.begin() + bytesRead);
+                         // Synchronizeë¥¼ ì‚¬ìš©í•´ ë©”ì¸ ìŠ¤ë ˆë“œì—ì„œ ì²˜ë¦¬í•˜ë„ë¡ ìš”ì²­í•  ìˆ˜ë„ ìˆì§€ë§Œ,
+                         // ì¼ë‹¨ ì§ì ‘ í˜¸ì¶œë¡œ êµ¬í˜„. ë°ì´í„° ê²½í•©ì´ ë°œìƒí•˜ë©´ Synchronize í•„ìš”.
+                         parentService->onRawDataReceived(receivedData);
+                    }
+                }
+            } catch(...) { /* ì˜ˆì™¸ ì²˜ë¦¬ */ }
+        } else {
+             Sleep(100);
         }
     }
 }
 
-void NetworkService::disconnect() {
-    if (idTcpClient_->Connected()) {
-        idTcpClient_->Disconnect();
+// --- NetworkService ---
+NetworkService::NetworkService() : clientThread(nullptr)
+{
+    tcpClient = std::make_unique<TIdTCPClient>(nullptr);
+}
+
+NetworkService::~NetworkService()
+{
+    disconnect();
+}
+
+void NetworkService::setDataCallback(std::function<void(const std::vector<char>&)> cb)
+{
+    this->onDataCallback = cb;
+}
+
+// ìŠ¤ë ˆë“œë¡œë¶€í„° í˜¸ì¶œë˜ëŠ” í•¨ìˆ˜
+void NetworkService::onRawDataReceived(const std::vector<char>& data)
+{
+    // AppControllerê°€ ë“±ë¡í•œ ì½œë°± í•¨ìˆ˜ë¥¼ ì‹¤í–‰
+    if (onDataCallback) {
+        onDataCallback(data);
     }
 }
 
-bool NetworkService::isConnected() {
-    return idTcpClient_->Connected();
+void NetworkService::connect(const String& ip, int port)
+{
+    if (tcpClient->Connected()) disconnect();
+    try {
+        tcpClient->Host = ip;
+        tcpClient->Port = port;
+        tcpClient->Connect();
+        if (tcpClient->Connected())
+        {
+            // ìŠ¤ë ˆë“œ ìƒì„± ì‹œ this (NetworkService ìì‹ )ë¥¼ ë„˜ê²¨ì¤Œ
+            clientThread = new TTCPClientRawHandleThread(tcpClient.get(), this);
+        }
+    } catch (...) { /* ì—°ê²° ì‹¤íŒ¨ ì²˜ë¦¬ */ }
 }
 
-// ÀÌ ÇÔ¼ö´Â º°µµÀÇ ½º·¹µå¿¡¼­ ÁÖ±âÀûÀ¸·Î È£ÃâµÇ¾î¾ß ÇÕ´Ï´Ù.
-void NetworkService::checkForData() {
-    if (idTcpClient_ && idTcpClient_->Connected() && idTcpClient_->IOHandler) {
-        // ÀĞÀ» µ¥ÀÌÅÍ°¡ ÀÖ´ÂÁö È®ÀÎ
-        idTcpClient_->IOHandler->CheckForDataOnSource(10); // 10ms Å¸ÀÓ¾Æ¿ô
-        if (idTcpClient_->IOHandler->InputBufferIsEmpty() == false) {
-            // µ¥ÀÌÅÍ°¡ ÀÖÀ¸¸é ÇÑ ÁÙ ÀĞ¾î¼­ Äİ¹éÀ¸·Î Àü´Ş
-            std::string s = AnsiString(idTcpClient_->IOHandler->ReadLn()).c_str();
-            if (onDataReceived_) {
-                onDataReceived_(s);
-            }
-        }
+void NetworkService::disconnect()
+{
+    if (clientThread) {
+        clientThread->Terminate();
+        clientThread->WaitFor();
+        delete clientThread;
+        clientThread = nullptr;
+    }
+    if (tcpClient && tcpClient->Connected()) {
+        tcpClient->Disconnect();
     }
 }

@@ -1,26 +1,16 @@
-#ifndef DataParser_H
-#define DataParser_H
+// Controller/DataParser.h
 
-#include <string>
+#ifndef DataParserH
+#define DataParserH
+
 #include <vector>
 #include <optional>
-
-struct ParsedAircraftData {
-    std::string icao24;
-    std::string flightId;
-    double latitude = 0.0;
-    double longitude = 0.0;
-    double altitude = 0.0;
-    double speed = 0.0;
-    double track = 0.0;
-};
+#include "Model/Aircraft.h"
 
 class DataParser {
 public:
     DataParser();
-    std::optional<ParsedAircraftData> parseSbsMessage(const std::string& sbsMessage);
-private:
-    std::vector<std::string> split(const std::string& s, char delimiter);
+    std::optional<TADS_B_Aircraft> parse(const std::vector<char>& data);
 };
 
-#endif // DataParser_H
+#endif

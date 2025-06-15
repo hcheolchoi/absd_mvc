@@ -88,14 +88,14 @@
         <ILINK_TranslatedLibraryPath>$(BDSLIB)\$(PLATFORM)\release\$(LANGDIR);$(ILINK_TranslatedLibraryPath)</ILINK_TranslatedLibraryPath>
         <ProjectType>CppVCLApplication</ProjectType>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
-        <AllPackageLibs>rtl.lib;vcl.lib;VclSmp.lib;vclx.lib</AllPackageLibs>
+        <AllPackageLibs>rtl.lib;vcl.lib;VclSmp.lib;vclx.lib;IndySystem.lib;IndyCore.lib;bcbsmp.lib;OpenGLPanel_DP.lib;vclimg.lib</AllPackageLibs>
         <_TCHARMapping>wchar_t</_TCHARMapping>
         <Multithreaded>true</Multithreaded>
         <Icon_MainIcon>$(BDS)\bin\cbuilder_PROJECTICON.ico</Icon_MainIcon>
         <UWP_CppLogo44>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_44.png</UWP_CppLogo44>
         <UWP_CppLogo150>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_150.png</UWP_CppLogo150>
-        <IncludePath>Utils\;Model\;Controller\;View\;..\..\..\LG\ADSB_FINAL\;$(IncludePath)</IncludePath>
-        <ILINK_LibraryPath>Utils\;Model\;Controller\;View\;..\..\..\LG\ADSB_FINAL\;$(ILINK_LibraryPath)</ILINK_LibraryPath>
+        <IncludePath>Components\OpenGLv0.5BDS2006\Component\;Utils\;Model\;Controller\;View\;..\..\..\LG\ADSB_FINAL\;$(IncludePath)</IncludePath>
+        <ILINK_LibraryPath>Components\OpenGLv0.5BDS2006\Component\;Utils\;Model\;Controller\;View\;..\..\..\LG\ADSB_FINAL\;$(ILINK_LibraryPath)</ILINK_LibraryPath>
         <SanitizedProjectName>ADSB_MVC</SanitizedProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
@@ -174,7 +174,9 @@
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
         <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
-        <LinkPackageImports>rtl.bpi;vcl.bpi;VclSmp.bpi;vclx.bpi</LinkPackageImports>
+        <LinkPackageImports>rtl.bpi;vcl.bpi;VclSmp.bpi;vclx.bpi;IndySystem.bpi;IndyCore.bpi;bcbsmp.bpi;OpenGLPanel_DP.bpi;vclimg.bpi</LinkPackageImports>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_Locale>1033</VerInfo_Locale>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>

@@ -1,81 +1,112 @@
-﻿// ------------------ View/MainView.h (이 코드로 전체 교체) ------------------
-#ifndef MainView_H
-#define MainView_H
+﻿// View/MainView.h
 
+//---------------------------------------------------------------------------
+
+#ifndef MainViewH
+#define MainViewH
+//---------------------------------------------------------------------------
 #include <System.Classes.hpp>
 #include <Vcl.Controls.hpp>
 #include <Vcl.StdCtrls.hpp>
 #include <Vcl.Forms.hpp>
+#include "OpenGLPanel.h"
 #include <Vcl.ComCtrls.hpp>
 #include <Vcl.ExtCtrls.hpp>
-#include <Vcl.Dialogs.hpp>
-#include <Vcl.Samples.Spin.hpp>
 #include <Vcl.Menus.hpp>
+#include <Vcl.Dialogs.hpp>
 #include "cspin.h"
-#include "OpenGLPanel.h"
-#include <IdBaseComponent.hpp>
-#include <IdComponent.hpp>
-#include <IdTCPClient.hpp>
-#include <IdTCPConnection.hpp>
+#include <Vcl.Imaging.pngimage.hpp>
 
-#include <vector>
-#include <memory>
-#include <string>
-
-// 전방 선언
+// Controller 클래스를 전방 선언합니다.
 class AppController;
-class Aircraft;
-class TOpenGLPanel;
 
-class TForm1 : public TForm
+// Model의 변경을 통지받기 위한 Observer 인터페이스를 포함합니다.
+#include "Model/IModelObserver.h"
+#include "Controller/AppController.h"
+
+//---------------------------------------------------------------------------
+// TMainView 클래스가 IModelObserver 인터페이스를 상속받습니다.
+class TMainView : public TForm, public IModelObserver
 {
 __published:	// IDE-managed Components
-	// DFM 파일에 실제로 존재하는 컴포넌트들의 선언입니다.
-	// 이 목록은 사용자님의 DFM 파일과 일치해야 합니다.
+	TMainMenu *MainMenu1;
+	TMenuItem *File1;
+	TMenuItem *Exit1;
+	TMenuItem *Record1;
+	TMenuItem *PlayBack1;
+	TMenuItem *Stop1;
+	TMenuItem *Help1;
+	TMenuItem *About1;
+	TPageControl *PageControl1;
+	TTabSheet *TabSheet1;
 	TPanel *Panel1;
-	TOpenGLPanel *ObjectDisplay;
+	TPanel *Panel2;
+	TOpenGLPanel *OpenGLPanel1;
+	TListView *ListView1;
+	TStatusBar *StatusBar1;
+	TTabSheet *TabSheet2;
+	TLabel *Label1;
+	TEdit *IPAddress;
+	TLabel *Label2;
+	TEdit *Port;
 	TButton *ConnectButton;
-	TListView *AircraftListView;
-	TStatusBar *StatusBar;
-	TTimer *NetworkTimer;
-	TLabel *Label;
-	TTrackBar *TrackBar;
-	TCheckBox *CheckBox;
-	TStaticText *StaticText;
-	TCSpinEdit *CSpinEdit;
-	TEdit *Edit;
-	TComboBox *ComboBox;
-	TMainMenu *MainMenu;
-	TIdTCPClient *IdTCPClient;
-	TSaveDialog *SaveDialog;
-	TOpenDialog *OpenDialog;
-	// ... 기타 DFM에 있는 UI 컴포넌트들 ...
-
-	// --- 이벤트 핸들러 선언 ---
+	TButton *DisconnectButton;
+	TRadioGroup *DataSource;
+	TCheckBox *RecordRawCheckBox;
+	TCheckBox *RecordSBSCheckBox;
+	TTimer *Timer1;
+	TOpenDialog *OpenDialog1;
+	TSaveDialog *SaveDialog1;
+	TMenuItem *LoadAircraftDatabase1;
+	TMenuItem *LoadARTCCBoundaries1;
+	TListView *AreaListView;
+	TButton *Insert;
+	TButton *Delete;
+	TButton *Complete;
+	TButton *Cancel;
+	TImage *Image1;
+	TLabel *Label3;
+	TEdit *OwnshipICAO;
+	TCheckBox *CheckBoxCPA;
+	TLabel *Label4;
+	TCheckBox *CheckBoxCollisionCourse;
+	TLabel *Label5;
+	TLabel *Label6;
 	void __fastcall FormCreate(TObject *Sender);
+	void __fastcall OpenGLPanel1Paint(TObject *Sender);
 	void __fastcall FormDestroy(TObject *Sender);
-	void __fastcall NetworkTimerTimer(TObject *Sender);
+	void __fastcall OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift,
+		  int X, int Y);
+	void __fastcall OpenGLPanel1MouseMove(TObject *Sender, TShiftState Shift, int X,
+		  int Y);
+	void __fastcall OpenGLPanel1MouseUp(TObject *Sender, TMouseButton Button, TShiftState Shift,
+		  int X, int Y);
+	void __fastcall Timer1Timer(TObject *Sender);
+	void __fastcall Exit1Click(TObject *Sender);
 	void __fastcall ConnectButtonClick(TObject *Sender);
-	void __fastcall AircraftListViewSelectItem(TObject *Sender, TListItem *Item, bool Selected);
-	void __fastcall ObjectDisplayPaint(TObject *Sender);
-	void __fastcall ObjectDisplayInit(TObject *Sender);
+	void __fastcall DisconnectButtonClick(TObject *Sender);
 
 
 private:	// User declarations
-	std::unique_ptr<AppController> controller_;
-	std::vector<const Aircraft*> currentAircrafts_; // 현재 항공기 목록을 저장할 변수
+	// Controller에 대한 포인터를 저장하여 UI 이벤트를 전달합니다.
+	AppController* controller;
+
+	// View와 관련된 상태 변수들 (Model로 이전되지 않은 UI 관련 데이터)
+	int g_MouseLeftDownX;
+	int g_MouseLeftDownY;
+	int g_MouseDownMask;
 
 public:		// User declarations
-	__fastcall TForm1(TComponent* Owner);
-	__fastcall ~TForm1();
+	__fastcall TMainView(TComponent* Owner);
 
-	TTimer* getNetworkTimer() const { return NetworkTimer; }
-	// --- 컨트롤러가 호출할 함수들 ---
-	void updateDisplay(const std::vector<const Aircraft*>& aircrafts);
-	void displayStatus(const std::string& message);
-	void displaySelectedAircraftDetails(const Aircraft* aircraft);
+	// ADSB_MVC.cpp에서 Controller를 주입하기 위한 메소드
+	void setController(AppController* controller);
+
+	// IModelObserver 인터페이스의 순수 가상 함수 구현
+	// Model의 데이터가 변경될 때 이 함수가 호출됩니다.
+	void onModelUpdate() override;
 };
 //---------------------------------------------------------------------------
-extern PACKAGE TForm1 *Form1;
+extern PACKAGE TMainView *MainView;
 //---------------------------------------------------------------------------
 #endif

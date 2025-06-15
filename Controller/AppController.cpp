@@ -1,100 +1,162 @@
+// Controller/AppController.cpp
+
 #pragma hdrstop
-#include "AppController.h"
-#include "../View/MainView.h" // TForm1의 정의가 포함된 헤더
-#include "../Model/AircraftModel.h"
-#include "DataParser.h"
-#include "NetworkService.h"
-#include "../Utils/CPA.h"
-#include <sstream>
-#pragma package(smart_init)
 
-// 생성자 파라미터 타입을 TForm1* 로 변경
-AppController::AppController(TForm1* view) : view_(view) {
-    model_ = std::make_unique<AircraftModel>();
-    parser_ = std::make_unique<DataParser>();
+#include "Controller/AppController.h"
 
-    networkService_ = std::make_unique<NetworkService>(view,
-        [this](const std::string& data) {
-            this->processReceivedData(data);
-        });
+// .cpp 파일에서는 사용하는 모든 클래스의 전체 정의를 포함해야 합니다.
+#include "Model/AircraftModel.h"
+#include "View/MainView.h"
+#include "Controller/NetworkService.h"
+#include "Controller/DataParser.h"
+#include "Component/OpenGLPanel.h"
+#include "Utils/ntds2d.h"
+#include "Utils/TimeFunctions.h"
+#include "Map/MapSrc/FlatEarthView.h"
+#include "Map/MapSrc/TileManager.h"
+#include "Map/MapSrc/FileSystemStorage.h"
+#include "Map/MapSrc/MapProvider/GoogleMapsProvider.h"
+#include "Map/MapSrc/Layer.h"
+#include <gl/gl.h>
 
-    model_->addObserver([this]() { this->onModelUpdate(); });
-}
 
-AppController::~AppController() {}
-
-// 연결 시 MainView(TForm1)의 타이머를 제어
-void AppController::toggleConnection() {
-    if (networkService_->isConnected()) {
-        networkService_->disconnect();
-        view_->NetworkTimer->Enabled = false; // 타이머 중지
-        view_->displayStatus("Disconnected.");
-    } else {
-        networkService_->connect("127.0.0.1", 30003); // 이 주소는 예시입니다.
-        if (networkService_->isConnected()) {
-            view_->NetworkTimer->Enabled = true; // 타이머 시작
-            view_->displayStatus("Connected. Receiving data...");
-        } else {
-            view_->displayStatus("Connection failed.");
-        }
-    }
-}
-
-// 타이머에 의해 주기적으로 호출됩니다.
-void AppController::checkForData()
+AppController::AppController(AircraftModel* model, TMainView* view)
+    : model(model), view(view), g_EarthView(nullptr), g_GETileManager(nullptr),
+      g_MouseDownMask(0), g_MouseLeftDownX(0), g_MouseLeftDownY(0)
 {
-    networkService_->checkForData();
+    networkService = std::make_unique<NetworkService>();
+    networkService->setDataCallback([this](const std::vector<char>& data) {
+        this->onDataReceived(data);
+    });
+    dataParser = std::make_unique<DataParser>();
 }
 
-// 이 아래 코드는 이전과 동일합니다.
-void AppController::processReceivedData(const std::string& data) {
-    std::stringstream ss(data);
-    std::string line;
+AppController::~AppController()
+{
+    if (g_GETileManager) delete g_GETileManager;
+    if (g_EarthView) delete g_EarthView;
+}
 
-    // 여러 줄의 메시지가 한번에 올 수 있으므로 한 줄씩 처리
-    while (std::getline(ss, line, '\n')) {
-        if (!line.empty() && (line.back() == '\r' || line.back() == '\n')) {
-            line.pop_back();
+void AppController::onDataReceived(const std::vector<char>& data)
+{
+    auto parsedAircraft = dataParser->parse(data);
+    if (parsedAircraft.has_value()) {
+        model->addOrUpdateAircraft(parsedAircraft.value());
+    }
+}
+
+void AppController::onFormCreate()
+{
+    initializeMap();
+    MakeAirplaneImages();
+}
+
+void AppController::onFormDestroy()
+{
+}
+
+void AppController::connect(const String& ip, int port)
+{
+    if (networkService) {
+        networkService->connect(ip, port);
+    }
+}
+
+void AppController::disconnect()
+{
+    if (networkService) {
+        networkService->disconnect();
+    }
+}
+
+void AppController::getAllAircraft(std::vector<TADS_B_Aircraft>& list)
+{
+    if (model) {
+        model->getAllAircraft(list);
+    } else {
+        list.clear();
+    }
+}
+
+void AppController::onTimerTick()
+{
+    if (model) {
+        model->updateAircraftStatus();
+    }
+    if (g_EarthView) {
+        g_EarthView->Update();
+    }
+}
+
+void AppController::initializeMap()
+{
+    mapCenterLat = 40.73612;
+    mapCenterLon = -80.33158;
+    g_EarthView = new FlatEarthView();
+    g_EarthView->SetScreenSize(800, 600);
+    g_EarthView->SetViewPoint(mapCenterLat, mapCenterLon, 2.0);
+    IMAPProvider *provider = new GoogleMapsProvider(IMAPProvider::Satellite);
+    Layer *layer = new Layer(provider);
+    g_EarthView->AddLayer(layer);
+    g_GETileManager = new TileManager(g_EarthView, new FileSystemStorage(L"C:\\Tiles"));
+}
+
+void AppController::drawDisplay(TOpenGLPanel* panel)
+{
+    if (!g_EarthView) return;
+
+    panel->MakeCurrent();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glLoadIdentity();
+
+    g_EarthView->SetScreenSize(panel->Width, panel->Height);
+    g_EarthView->Draw();
+
+    BeginAirplaneBatch();
+    if (model) {
+        std::vector<TADS_B_Aircraft> aircraftList;
+        model->getAllAircraft(aircraftList);
+
+        for (std::vector<TADS_B_Aircraft>::iterator it = aircraftList.begin(); it != aircraftList.end(); ++it) {
+            const TADS_B_Aircraft& aircraft = *it;
+            if (aircraft.HaveLatLon) {
+                double screenX, screenY;
+                g_EarthView->GetScreenPos(aircraft.Latitude, aircraft.Longitude, screenX, screenY);
+                if (screenX >= 0 && screenY >= 0) {
+                     BatchAirplane(screenX, screenY, 1.0, aircraft.Heading, aircraft.SpriteImage, 1,1,0,1);
+                }
+            }
         }
-        
-        // 1. DataParser로 데이터 변환
-        auto parsedData = parser_->parseSbsMessage(line);
+    }
+    RenderAirplaneBatch();
 
-        // 2. 파싱 성공 시, Model 업데이트 요청
-        if (parsedData) {
-            model_->updateAircraft(
-                parsedData->icao24,
-                parsedData->latitude,
-                parsedData->longitude,
-                parsedData->altitude,
-                parsedData->speed,
-                parsedData->track,
-                parsedData->flightId
-            );
-        }
+    panel->SwapBuffers();
+}
+
+void AppController::onMouseDown(TMouseButton Button, TShiftState Shift, int X, int Y)
+{
+    if (Button == mbLeft) {
+        g_MouseDownMask |= 1;
+        g_MouseLeftDownX = X;
+        g_MouseLeftDownY = Y;
     }
 }
 
-void AppController::selectAircraft(const std::string& icao) {
-    const Aircraft* ac = model_->getAircraft(icao);
-    if (ac) {
-        view_->displaySelectedAircraftDetails(ac);
+void AppController::onMouseMove(TShiftState Shift, int X, int Y)
+{
+    if ((g_MouseDownMask & 1) && g_EarthView) {
+        double dx = g_MouseLeftDownX - X;
+        double dy = g_MouseLeftDownY - Y;
+        g_EarthView->Move(dx, dy);
+        g_MouseLeftDownX = X;
+        g_MouseLeftDownY = Y;
+        view->onModelUpdate();
     }
 }
 
-void AppController::onModelUpdate() {
-    // 1. Model로부터 최신 항공기 목록을 가져옴
-    auto aircrafts = model_->getAllAircraft();
-
-    // 2. View에 데이터를 전달하여 화면 업데이트를 요청
-    view_->updateDisplay(aircrafts);
-
-    // 3. 상태 메시지 업데이트
-    if (networkService_->isConnected() && !aircrafts.empty()) {
-        view_->displayStatus("Receiving data... Aircraft count: " + std::to_string(aircrafts.size()));
-    } else if (!networkService_->isConnected()) {
-         if (view_->getNetworkTimer()) view_->getNetworkTimer()->Enabled = false;
-         view_->displayStatus("Disconnected.");
+void AppController::onMouseUp(TMouseButton Button, TShiftState Shift, int X, int Y)
+{
+    if (Button == mbLeft) {
+        g_MouseDownMask &= ~1;
     }
 }
-void AppController::checkForCPAAlerts() {}
