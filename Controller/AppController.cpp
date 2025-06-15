@@ -3,86 +3,84 @@
 #pragma hdrstop
 
 #include "AppController.h"
-#include "MainView.h" // TForm1의 전체 정의를 위해 필요
+#include "MainView.h"
 #include "DataParser.h"
+#include "Model/AircraftModel.h"
+#include "NetworkService.h"
 #include <sstream>
 #include <iomanip>
+#include <vector>
 
-//---------------------------------------------------------------------------
 #pragma package(smart_init)
 
-AppController::AppController(TForm1* view) // 생성자 인자 변경 (TMainForm* -> TForm1*)
-: theView(view), networkService(nullptr)
+AppController::AppController(TForm1* view)
+: theView(view), networkService(nullptr), theModel(nullptr)
 {
 	theModel = new AircraftModel();
 	networkService = new NetworkService();
-
-	// Model에 View(Observer)를 등록하는 작업을 Controller가 수행
 	theModel->addObserver(theView);
+
+	networkService->setDataCallback([this](const std::vector<char>& data) {
+		this->onDataReceived(data);
+	});
 }
 
 AppController::~AppController()
 {
-	theModel->removeObserver(theView);
+	if(networkService) networkService->disconnect();
+	if(theModel) theModel->removeObserver(theView);
 	delete theModel;
 	delete networkService;
 }
 
 void AppController::start()
 {
-	loadAircraftData();
+	// 초기화 로직
 }
 
-void AppController::onTimer()
+void AppController::connectToServer(const std::string& ip, int port)
 {
-    // 주기적으로 데이터를 로드
-	loadAircraftData();
+	if(networkService) {
+		networkService->connect(ip.c_str(), port);
+	}
 }
 
-
-void AppController::loadAircraftData()
+void AppController::onDataReceived(const std::vector<char>& data)
 {
-	std::string jsonData = networkService->fetchData();
+    std::string jsonData(data.begin(), data.end());
 	if (!jsonData.empty())
 	{
 		std::vector<Aircraft> aircrafts = DataParser::parse(jsonData);
-		theModel->updateAircrafts(aircrafts);
+		if(theModel) theModel->updateAircrafts(aircrafts);
 	}
 }
 
-// --- View가 호출할 함수들의 구현부 ---
-
-int AppController::getAircraftCount()
+std::vector<AircraftInfo> AppController::getAllAircraftInfo()
 {
-	if(theModel)
-	{
-		return theModel->getAircraftCount();
-	}
-	return 0;
-}
-
-AircraftInfo AppController::getAircraftInfo(int index)
-{
-	AircraftInfo info = {}; // 0으로 초기화
+	std::vector<AircraftInfo> result;
 	if (theModel)
 	{
-		const Aircraft* ac = theModel->getAircraft(index);
-		if (ac)
+		std::vector<Aircraft> all_ac = theModel->getAllAircraft();
+		result.reserve(all_ac.size());
+
+		for(const auto& ac : all_ac)
 		{
-			info.lat = ac->lat;
-			info.lon = ac->lon;
-			info.altitude = ac->altitude;
-			info.icao = ac->icao24;
-			info.callsign = ac->callsign;
-			info.selected = ac->selected;
+			AircraftInfo info;
+			info.lat = ac.getLatitude();
+			info.lon = ac.getLongitude();
+			info.altitude = ac.getAltitude();
+			info.icao = ac.getIcao24();
+			info.callsign = ac.getFlightId();
+			info.selected = ac.selected;
+			result.push_back(info);
 		}
 	}
-	return info;
+	return result;
 }
 
 void AppController::selectAircraft(unsigned int icao)
 {
-	if(theModel)
+	if (theModel)
 	{
 		theModel->selectAircraft(icao);
 	}
@@ -96,12 +94,12 @@ std::string AppController::getSelectedAircraftInfoText()
 	if (ac)
 	{
 		std::stringstream ss;
-		ss << "Callsign: " << ac->callsign << "\n"
-		   << "ICAO24: " << std::hex << ac->icao24 << std::dec << "\n"
-		   << "Origin: " << ac->origin_country << "\n"
-		   << "Altitude: " << static_cast<int>(ac->altitude) << " m\n"
-		   << "Latitude: " << std::fixed << std::setprecision(4) << ac->lat << "\n"
-		   << "Longitude: " << std::fixed << std::setprecision(4) << ac->lon;
+		ss << "Callsign: " << ac->getFlightId() << "\n"
+		   << "ICAO24: " << std::hex << ac->getIcao24() << std::dec << "\n"
+		   << "Altitude: " << static_cast<int>(ac->getAltitude()) << " m\n"
+           << "Speed: " << ac->getSpeed() * 3.6 << " km/h\n"
+		   << "Latitude: " << std::fixed << std::setprecision(4) << ac->getLatitude() << "\n"
+		   << "Longitude: " << std::fixed << std::setprecision(4) << ac->getLongitude();
 		return ss.str();
 	}
 	return "No aircraft selected.";

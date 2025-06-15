@@ -1,6 +1,6 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
-        <ProjectGuid>{14FF82B1-A409-4249-80F1-CDE6CD92FB52}</ProjectGuid>
+        <ProjectGuid>{A16F7203-D234-4759-93D8-0F3BD28DC749}</ProjectGuid>
         <ProjectVersion>20.1</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <AppType>Application</AppType>
@@ -88,14 +88,14 @@
         <ILINK_TranslatedLibraryPath>$(BDSLIB)\$(PLATFORM)\release\$(LANGDIR);$(ILINK_TranslatedLibraryPath)</ILINK_TranslatedLibraryPath>
         <ProjectType>CppVCLApplication</ProjectType>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
-        <AllPackageLibs>rtl.lib;vcl.lib;VclSmp.lib;vclx.lib;IndySystem.lib;IndyCore.lib;bcbsmp.lib;OpenGLPanel_DP.lib;vclimg.lib</AllPackageLibs>
+        <AllPackageLibs>rtl.lib;vcl.lib;vclimg.lib;IndySystem.lib;IndyCore.lib;bcbsmp.lib;vclx.lib;OpenGLPanel_DP.lib</AllPackageLibs>
         <_TCHARMapping>wchar_t</_TCHARMapping>
         <Multithreaded>true</Multithreaded>
         <Icon_MainIcon>$(BDS)\bin\cbuilder_PROJECTICON.ico</Icon_MainIcon>
         <UWP_CppLogo44>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_44.png</UWP_CppLogo44>
         <UWP_CppLogo150>$(BDS)\bin\Artwork\Windows\UWP\cppreg_UwpDefault_150.png</UWP_CppLogo150>
-        <IncludePath>Components\OpenGLv0.5BDS2006\Component\;Utils\;Model\;Controller\;View\;..\..\..\LG\ADSB_FINAL\;$(IncludePath)</IncludePath>
-        <ILINK_LibraryPath>Components\OpenGLv0.5BDS2006\Component\;Utils\;Model\;Controller\;View\;..\..\..\LG\ADSB_FINAL\;$(ILINK_LibraryPath)</ILINK_LibraryPath>
+        <IncludePath>Controller\;Model\;Utils\;View\;..\..\..\LG\ADSB\;..\..\..\LG\ADSB\View\;$(IncludePath)</IncludePath>
+        <ILINK_LibraryPath>Controller\;Model\;Utils\;View\;..\..\..\LG\ADSB\;..\..\..\LG\ADSB\View\;$(ILINK_LibraryPath)</ILINK_LibraryPath>
         <SanitizedProjectName>ADSB_MVC</SanitizedProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
@@ -107,7 +107,7 @@
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
-        <BCC_PCHName_Clang>ADSB_MVCPCH2.h</BCC_PCHName_Clang>
+        <BCC_PCHName_Clang>ADSB_MVCPCH1.h</BCC_PCHName_Clang>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <PackageImports>adortl;appanalytics;bcbie;bcbsmp;bindcomp;bindcompdbx;bindcompfmx;bindcompvcl;bindcompvclsmp;bindcompvclwinx;bindengine;CloudService;CustomIPTransport;dbexpress;dbrtl;dbxcds;DbxClientDriver;DbxCommonDriver;DBXInterBaseDriver;DBXMySQLDriver;DBXSqliteDriver;dsnap;dsnapcon;dsnapxml;FireDAC;FireDACADSDriver;FireDACCommon;FireDACCommonDriver;FireDACCommonODBC;FireDACIBDriver;FireDACMSAccDriver;FireDACMySQLDriver;FireDACPgDriver;FireDACSqliteDriver;fmx;fmxase;fmxdae;fmxFireDAC;fmxobj;IndyCore;IndyIPClient;IndyIPCommon;IndyIPServer;IndyProtocols;IndySystem;inet;inetdb;inetdbxpress;OpenGLPanel_DP;RESTBackendComponents;RESTComponents;rtl;Skia;soapmidas;soaprtl;soapserver;tethering;vcl;vclactnband;vcldb;vcldsnap;vcledge;vclFireDAC;vclie;vclimg;VCLRESTComponents;VclSmp;vcltouch;vclwinx;vclx;xmlrtl;$(PackageImports)</PackageImports>
@@ -118,7 +118,7 @@
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
-        <BCC_PCHName_Clang>ADSB_MVCPCH2.h</BCC_PCHName_Clang>
+        <BCC_PCHName_Clang>ADSB_MVCPCH1.h</BCC_PCHName_Clang>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <PackageImports>adortl;bindcomp;bindcompdbx;bindcompfmx;bindcompvcl;bindcompvclsmp;bindcompvclwinx;bindengine;CustomIPTransport;dbexpress;dbrtl;dbxcds;DbxClientDriver;DbxCommonDriver;DBXInterBaseDriver;DBXMySQLDriver;DBXSqliteDriver;dsnap;dsnapcon;dsnapxml;FireDAC;FireDACADSDriver;FireDACCommon;FireDACCommonDriver;FireDACCommonODBC;FireDACIBDriver;FireDACMSAccDriver;FireDACMySQLDriver;FireDACPgDriver;FireDACSqliteDriver;fmx;fmxase;fmxdae;fmxFireDAC;fmxobj;IndyCore;IndyIPClient;IndyIPCommon;IndyIPServer;IndyProtocols;IndySystem;inet;RESTBackendComponents;RESTComponents;rtl;Skia;vcl;vclactnband;vcldb;vcldsnap;vcledge;vclFireDAC;vclie;vclimg;VCLRESTComponents;VclSmp;vcltouch;vclwinx;vclx;xmlrtl;$(PackageImports)</PackageImports>
@@ -128,7 +128,7 @@
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
-        <BCC_PCHName_Clang>ADSB_MVCPCH2.h</BCC_PCHName_Clang>
+        <BCC_PCHName_Clang>ADSB_MVCPCH1.h</BCC_PCHName_Clang>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <BCC_OptimizeForSpeed>false</BCC_OptimizeForSpeed>
@@ -154,10 +154,10 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
-        <LinkPackageImports>rtl.bpi;vcl.bpi;VclSmp.bpi;vclx.bpi</LinkPackageImports>
+        <LinkPackageImports>rtl.bpi;vcl.bpi;vclimg.bpi;IndySystem.bpi;IndyCore.bpi;bcbsmp.bpi;vclx.bpi;OpenGLPanel_DP.bpi</LinkPackageImports>
         <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
         <ILINK_LibraryPath>$(BDSLIB)\$(PLATFORM)$(CC_SUFFIX)\debug;$(ILINK_LibraryPath)</ILINK_LibraryPath>
-        <IncludePath>C:\Users\pcuser\Documents\LG\ADSB_FINAL\Components\OpenGLv0.5BDS2006\Component;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Controller;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Map;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Map\jpeg;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Map\libgefetch;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Map\MapSrc;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Map\MapSrc\MapProvider;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Map\png;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Map\zlib;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Model;C:\Users\pcuser\Documents\LG\ADSB_FINAL\Utils;C:\Users\pcuser\Documents\LG\ADSB_FINAL\View;C:\Users\pcuser\Documents\LG\ADSB_FINAL;$(IncludePath)</IncludePath>
+        <IncludePath>C:\Users\pcuser\Documents\LG\ADSB\Components\OpenGLv0.5BDS2006\Component;C:\Users\pcuser\Documents\LG\ADSB\View;$(IncludePath)</IncludePath>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
     </PropertyGroup>
@@ -174,10 +174,10 @@
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
         <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
-        <LinkPackageImports>rtl.bpi;vcl.bpi;VclSmp.bpi;vclx.bpi;IndySystem.bpi;IndyCore.bpi;bcbsmp.bpi;OpenGLPanel_DP.bpi;vclimg.bpi</LinkPackageImports>
+        <LinkPackageImports>rtl.bpi;vcl.bpi;vclimg.bpi;IndySystem.bpi;IndyCore.bpi;bcbsmp.bpi;vclx.bpi;OpenGLPanel_DP.bpi</LinkPackageImports>
+        <IncludePath>C:\Users\pcuser\Documents\LG\ADSB\Components\OpenGLv0.5BDS2006\Component;$(IncludePath)</IncludePath>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <IncludePath>C:\Users\pcuser\Documents\LG\ADSB_FINAL\Utils;$(IncludePath)</IncludePath>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
@@ -189,36 +189,57 @@
         <CppCompile Include="ADSB_MVC.cpp">
             <BuildOrder>0</BuildOrder>
         </CppCompile>
-        <PCHCompile Include="ADSB_MVCPCH2.h">
+        <PCHCompile Include="ADSB_MVCPCH1.h">
             <BuildOrder>1</BuildOrder>
             <PCH>true</PCH>
         </PCHCompile>
-        <CppCompile Include="Controller\AppController.cpp">
+        <CppCompile Include="AreaDialog.cpp">
+            <Form>AreaConfirm</Form>
+            <FormType>dfm</FormType>
+            <DependentOn>AreaDialog.h</DependentOn>
             <BuildOrder>3</BuildOrder>
         </CppCompile>
+        <CppCompile Include="Controller\AppController.cpp">
+            <BuildOrder>17</BuildOrder>
+        </CppCompile>
+        <None Include="Controller\AppController.h">
+            <BuildOrder>18</BuildOrder>
+        </None>
         <CppCompile Include="Controller\DataParser.cpp">
-            <BuildOrder>4</BuildOrder>
+            <DependentOn>Controller\DataParser.h</DependentOn>
+            <BuildOrder>19</BuildOrder>
         </CppCompile>
         <CppCompile Include="Controller\NetworkService.cpp">
-            <BuildOrder>5</BuildOrder>
+            <DependentOn>Controller\NetworkService.h</DependentOn>
+            <BuildOrder>20</BuildOrder>
         </CppCompile>
         <CppCompile Include="Model\Aircraft.cpp">
-            <BuildOrder>6</BuildOrder>
+            <BuildOrder>13</BuildOrder>
         </CppCompile>
+        <None Include="Model\Aircraft.h">
+            <BuildOrder>14</BuildOrder>
+        </None>
         <CppCompile Include="Model\AircraftModel.cpp">
-            <BuildOrder>7</BuildOrder>
+            <DependentOn>Model\AircraftModel.h</DependentOn>
+            <BuildOrder>15</BuildOrder>
         </CppCompile>
+        <None Include="Model\IModelObserver.h">
+            <BuildOrder>16</BuildOrder>
+        </None>
         <CppCompile Include="Utils\CPA.cpp">
             <DependentOn>Utils\CPA.h</DependentOn>
-            <BuildOrder>8</BuildOrder>
+            <BuildOrder>10</BuildOrder>
         </CppCompile>
         <CppCompile Include="Utils\csv.cpp">
             <DependentOn>Utils\csv.h</DependentOn>
-            <BuildOrder>9</BuildOrder>
+            <BuildOrder>10</BuildOrder>
         </CppCompile>
+        <None Include="Utils\dms.h">
+            <BuildOrder>11</BuildOrder>
+        </None>
         <CppCompile Include="Utils\LatLonConv.cpp">
             <DependentOn>Utils\LatLonConv.h</DependentOn>
-            <BuildOrder>14</BuildOrder>
+            <BuildOrder>11</BuildOrder>
         </CppCompile>
         <CppCompile Include="Utils\ntds2d.cpp">
             <DependentOn>Utils\ntds2d.h</DependentOn>
@@ -226,22 +247,26 @@
         </CppCompile>
         <CppCompile Include="Utils\PointInPolygon.cpp">
             <DependentOn>Utils\PointInPolygon.h</DependentOn>
-            <BuildOrder>12</BuildOrder>
+            <BuildOrder>11</BuildOrder>
         </CppCompile>
+        <None Include="Utils\stb_image.h">
+            <BuildOrder>12</BuildOrder>
+        </None>
         <CppCompile Include="Utils\TimeFunctions.cpp">
             <DependentOn>Utils\TimeFunctions.h</DependentOn>
-            <BuildOrder>13</BuildOrder>
+            <BuildOrder>12</BuildOrder>
         </CppCompile>
         <CppCompile Include="Utils\TriangulatPoly.cpp">
             <DependentOn>Utils\TriangulatPoly.h</DependentOn>
-            <BuildOrder>14</BuildOrder>
+            <BuildOrder>12</BuildOrder>
         </CppCompile>
         <CppCompile Include="View\MainView.cpp">
             <Form>Form1</Form>
             <FormType>dfm</FormType>
             <DependentOn>View\MainView.h</DependentOn>
-            <BuildOrder>2</BuildOrder>
+            <BuildOrder>20</BuildOrder>
         </CppCompile>
+        <FormResources Include="AreaDialog.dfm"/>
         <FormResources Include="View\MainView.dfm"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
@@ -331,9 +356,9 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName=".\Win32\Release\ADSB_MVC.exe" Configuration="Release" Class="ProjectOutput">
+                <DeployFile LocalName=".\Win32\Debug\ADSB_MVC.tds" Configuration="Debug" Class="DebugSymbols">
                     <Platform Name="Win32">
-                        <RemoteName>ADSB_MVC.exe</RemoteName>
+                        <RemoteName>ADSB_MVC.tds</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

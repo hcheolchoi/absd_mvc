@@ -4,86 +4,72 @@
 #pragma hdrstop
 
 #include "AreaDialog.h"
-#include "MainView.h" // [수정] 'Form1' undeclared identifier 오류 해결
-
+#include "MainView.h"
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma resource "*.dfm"
-TAreaDialog *AreaDialog;
+// [수정] 전역 변수와 클래스 이름을 TAreaConfirm으로 변경
+TAreaConfirm *AreaConfirm;
 //---------------------------------------------------------------------------
-__fastcall TAreaDialog::TAreaDialog(TComponent* Owner)
+__fastcall TAreaConfirm::TAreaConfirm(TComponent* Owner)
 	: TForm(Owner)
 {
 }
 //---------------------------------------------------------------------------
-void __fastcall TAreaDialog::InsertClick(TObject *Sender)
+void __fastcall TAreaConfirm::OkButtonClick(TObject *Sender)
 {
-	if (NameEdit->Text.IsEmpty()) {
-		ShowMessage("Name is required.");
-		return;
-	}
+    if (AreaName->Text.IsEmpty()) {
+        ShowMessage("Area Name is required.");
+        return;
+    }
 
-	// [수정] TArea 타입 오류 해결
-	TArea *area = new TArea;
-	area->Name = NameEdit->Text;
-	area->min_lat = StrToFloat(MinLatEdit->Text);
-	area->max_lat = StrToFloat(MaxLatEdit->Text);
-	area->min_lon = StrToFloat(MinLonEdit->Text);
-	area->max_lon = StrToFloat(MaxLonEdit->Text);
-
-	TListItem *item = Form1->AreaListView->Items->Add();
-	item->Caption = area->Name;
-	item->SubItems->Add(FloatToStr(area->min_lat));
-	item->SubItems->Add(FloatToStr(area->max_lat));
-	item->SubItems->Add(FloatToStr(area->min_lon));
-	item->SubItems->Add(FloatToStr(area->max_lon));
-	item->Data = area;
-}
-//---------------------------------------------------------------------------
-void __fastcall TAreaDialog::DeleteClick(TObject *Sender)
-{
-	if (Form1->AreaListView->Selected)
-	{
-		TArea *area = (TArea*)Form1->AreaListView->Selected->Data;
-		delete area;
-		Form1->AreaListView->Selected->Delete();
-	}
-}
-//---------------------------------------------------------------------------
-void __fastcall TAreaDialog::CompleteClick(TObject *Sender)
-{
+    // MainView의 리스트에서 항목이 선택된 상태라면 '수정' 모드
     if (Form1->AreaListView->Selected) {
-		TArea *area = (TArea*)Form1->AreaListView->Selected->Data;
-		area->Name = NameEdit->Text;
-		area->min_lat = StrToFloat(MinLatEdit->Text);
-		area->max_lat = StrToFloat(MaxLatEdit->Text);
-		area->min_lon = StrToFloat(MinLonEdit->Text);
-		area->max_lon = StrToFloat(MaxLonEdit->Text);
+        // 기존에 저장된 AreaData 포인터를 가져와 내용만 수정
+        AreaData *area = (AreaData*)Form1->AreaListView->Selected->Data;
+        area->Name = AreaName->Text;
+        area->Color = ColorBox1->Selected;
 
-		Form1->AreaListView->Selected->Caption = area->Name;
-		Form1->AreaListView->Selected->SubItems->Strings[0] = FloatToStr(area->min_lat);
-		Form1->AreaListView->Selected->SubItems->Strings[1] = FloatToStr(area->max_lat);
-		Form1->AreaListView->Selected->SubItems->Strings[2] = FloatToStr(area->min_lon);
-		Form1->AreaListView->Selected->SubItems->Strings[3] = FloatToStr(area->max_lon);
-	}
+        // 화면에 보이는 리스트 항목의 캡션도 업데이트
+        Form1->AreaListView->Selected->Caption = area->Name;
+    }
+    // 선택된 항목이 없다면 '추가' 모드
+    else {
+        // 새로운 AreaData 객체를 동적으로 생성
+        AreaData *area = new AreaData;
+        area->Name = AreaName->Text;
+        area->Color = ColorBox1->Selected;
+
+        TListItem *item = Form1->AreaListView->Items->Add();
+        item->Caption = area->Name;
+        // Data 속성에 생성한 객체의 포인터를 저장
+        item->Data = area;
+    }
+
+	ModalResult = mrOk; // OK 버튼을 눌렀음을 알리고 창을 닫음
 }
 //---------------------------------------------------------------------------
-void __fastcall TAreaDialog::CancelClick(TObject *Sender)
+void __fastcall TAreaConfirm::CancelButtonClick(TObject *Sender)
 {
-	Close();
+	ModalResult = mrCancel; // Cancel 버튼을 눌렀음을 알리고 창을 닫음
 }
 //---------------------------------------------------------------------------
-
-void __fastcall TAreaDialog::FormShow(TObject *Sender)
+void __fastcall TAreaConfirm::FormShow(TObject *Sender)
 {
-	// [수정] TArea 타입 오류 해결
-	if (Form1->AreaListView->Selected) {
-		TArea *area = (TArea*)Form1->AreaListView->Selected->Data;
-		NameEdit->Text = area->Name;
-		MinLatEdit->Text = FloatToStr(area->min_lat);
-		MaxLatEdit->Text = FloatToStr(area->max_lat);
-		MinLonEdit->Text = FloatToStr(area->min_lon);
-		MaxLonEdit->Text = FloatToStr(area->max_lon);
-	}
+    // 폼이 화면에 표시될 때 호출됨
+    // 만약 MainView의 리스트에서 항목을 선택한 상태로 이 창을 열었다면,
+    // 해당 항목의 정보로 컨트롤들을 초기화합니다.
+    if (Form1->AreaListView->Selected) {
+        this->Caption = "Edit Area";
+        AreaData* area = (AreaData*)Form1->AreaListView->Selected->Data;
+        AreaName->Text = area->Name;
+        ColorBox1->Selected = area->Color;
+    }
+    // 새 항목 추가를 위해 창을 열었다면, 기본값으로 설정합니다.
+    else {
+        this->Caption = "Insert New Area";
+        AreaName->Text = "New Area";
+        ColorBox1->Selected = clRed;
+    }
 }
 //---------------------------------------------------------------------------

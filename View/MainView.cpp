@@ -4,77 +4,96 @@
 #pragma hdrstop
 
 #include "MainView.h"
-#include "AppController.h"
+#include "Controller/AppController.h"
+#include "AreaDialog.h" // 파일 이름은 AreaDialog.h, 내용은 TAreaConfirm
 #include <gl\gl.h>
 #include <gl\glu.h>
+#include <vector>
 
-// =========================================================================
-// LatLonConv 클래스 직접 삽입 시작
-// -------------------------------------------------------------------------
-// 설명: 컴파일러가 LatLonConv.h를 찾지 못하는 문제를 해결하기 위해,
-//       클래스 선언과 구현을 이 파일에 직접 포함시킵니다.
-// =========================================================================
-
+// LatLonConv 클래스 직접 삽입
 class LatLonConv {
 public:
-    // 위도, 경도 좌표를 화면의 X, Y 좌표로 변환하는 static 함수
     static void convert(double lat, double lon, double& x, double& y, int width, int height);
 };
-
-// LatLonConv 클래스의 convert 함수 구현
 void LatLonConv::convert(double lat, double lon, double& x, double& y, int width, int height) {
-    // 간단한 구면 좌표계-평면 좌표계 변환 공식 (Mercator projection 유사)
     x = (lon + 180.0) * (static_cast<double>(width) / 360.0);
     y = (90.0 - lat) * (static_cast<double>(height) / 180.0);
 }
 
-// =========================================================================
-// LatLonConv 클래스 직접 삽입 끝
-// =========================================================================
-
-
-//---------------------------------------------------------------------------
 #pragma package(smart_init)
-#pragma link "cspin"
 #pragma resource "*.dfm"
 TForm1 *Form1;
 
-//---------------------------------------------------------------------------
-__fastcall TForm1::TForm1(TComponent* Owner)
-	: TForm(Owner)
+__fastcall TForm1::TForm1(TComponent* Owner) : TForm(Owner), theController(nullptr) {}
+
+__fastcall TForm1::~TForm1()
 {
+	delete theController;
 }
 
-//---------------------------------------------------------------------------
 void __fastcall TForm1::FormCreate(TObject *Sender)
 {
 	theController = new AppController(this);
 	theController->start();
 }
 
-//---------------------------------------------------------------------------
-__fastcall TForm1::~TForm1()
+void TForm1::onModelUpdate()
 {
-	delete theController;
-}
-
-//---------------------------------------------------------------------------
-void __fastcall TForm1::Update()
-{
-	Memo1->Text = AnsiString(theController->getSelectedAircraftInfoText().c_str());
+	if(theController) {
+		Memo1->Text = AnsiString(theController->getSelectedAircraftInfoText().c_str());
+	}
 	OpenGLPanel1->Invalidate();
 }
 
-//---------------------------------------------------------------------------
 void __fastcall TForm1::Timer1Timer(TObject *Sender)
+{
+}
+
+void __fastcall TForm1::ConnectButtonClick(TObject *Sender)
 {
 	if (theController)
 	{
-		theController->onTimer();
+		std::string ip = AnsiString(IPAddress->Text).c_str();
+		int port = StrToIntDef(Port->Text, 30003);
+		theController->connectToServer(ip, port);
 	}
 }
 
-//---------------------------------------------------------------------------
+void __fastcall TForm1::Exit1Click(TObject *Sender)
+{
+    Close();
+}
+
+void __fastcall TForm1::InsertClick(TObject *Sender)
+{
+    if(AreaListView->Selected)
+        AreaListView->Selected->Selected = false;
+    AreaConfirm->ShowModal();
+}
+
+void __fastcall TForm1::DeleteClick(TObject *Sender)
+{
+    if(AreaListView->Selected)
+    {
+        // [수정] TArea 대신 AreaData 사용
+        AreaData *area = (AreaData*)AreaListView->Selected->Data;
+        delete area;
+        AreaListView->Selected->Delete();
+    }
+}
+
+void __fastcall TForm1::CompleteClick(TObject *Sender)
+{
+    if(AreaListView->Selected) {
+        AreaConfirm->ShowModal();
+    }
+}
+
+void __fastcall TForm1::CancelClick(TObject *Sender)
+{
+    Close();
+}
+
 void __fastcall TForm1::OpenGLPanel1Paint(TObject *Sender)
 {
 	glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -91,71 +110,50 @@ void __fastcall TForm1::OpenGLPanel1Paint(TObject *Sender)
 	SwapBuffers(GetDC(OpenGLPanel1->Handle));
 }
 
-//---------------------------------------------------------------------------
 void TForm1::DrawAircrafts()
 {
 	if (!theController) return;
-
-	int count = theController->getAircraftCount();
-
-	for (int i = 0; i < count; ++i)
+	std::vector<AircraftInfo> aircraftToDraw = theController->getAllAircraftInfo();
+	for (const auto& acInfo : aircraftToDraw)
 	{
-		AircraftInfo acInfo = theController->getAircraftInfo(i);
-
-		if (acInfo.icao != 0)
-		{
-			double screenX, screenY;
-			// 이제 이 함수 호출은 같은 파일 안에 있는 LatLonConv 클래스를 사용하므로
-			// 절대적으로 안전합니다.
-			LatLonConv::convert(acInfo.lat, acInfo.lon, screenX, screenY,
-								OpenGLPanel1->Width, OpenGLPanel1->Height);
-
-			if (acInfo.selected) {
-				glColor3f(1.0, 1.0, 0.0); // Yellow
-			} else {
-				glColor3f(0.0, 1.0, 0.0); // Green
-			}
-
-			glBegin(GL_QUADS);
-			glVertex2f(screenX - 5, screenY - 5);
-			glVertex2f(screenX + 5, screenY - 5);
-			glVertex2f(screenX + 5, screenY + 5);
-			glVertex2f(screenX - 5, screenY + 5);
-			glEnd();
-		}
+		double screenX, screenY;
+		LatLonConv::convert(acInfo.lat, acInfo.lon, screenX, screenY, OpenGLPanel1->Width, OpenGLPanel1->Height);
+		if (acInfo.selected) { glColor3f(1.0, 1.0, 0.0); } else { glColor3f(0.0, 1.0, 0.0); }
+		glBegin(GL_QUADS);
+		glVertex2f(screenX - 5, screenY - 5); glVertex2f(screenX + 5, screenY - 5);
+		glVertex2f(screenX + 5, screenY + 5); glVertex2f(screenX - 5, screenY + 5);
+		glEnd();
 	}
 }
-//---------------------------------------------------------------------------
-void TForm1::DrawLabels()
-{
-}
 
-//---------------------------------------------------------------------------
-void __fastcall TForm1::OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button,
-          TShiftState Shift, int X, int Y)
+void TForm1::DrawLabels() {}
+
+void __fastcall TForm1::OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift, int X, int Y)
 {
 	if (!theController) return;
-
-	int count = theController->getAircraftCount();
 	unsigned int selectedIcao = 0;
-
-	for (int i = 0; i < count; ++i)
+	std::vector<AircraftInfo> allAircraft = theController->getAllAircraftInfo();
+	for (const auto& acInfo : allAircraft)
 	{
-		AircraftInfo acInfo = theController->getAircraftInfo(i);
-
-		if(acInfo.icao != 0)
+		double screenX, screenY;
+		LatLonConv::convert(acInfo.lat, acInfo.lon, screenX, screenY, OpenGLPanel1->Width, OpenGLPanel1->Height);
+		if (X >= screenX - 5 && X <= screenX + 5 && Y >= screenY - 5 && Y <= screenY + 5)
 		{
-			double screenX, screenY;
-			LatLonConv::convert(acInfo.lat, acInfo.lon, screenX, screenY,
-								OpenGLPanel1->Width, OpenGLPanel1->Height);
-
-			if (X >= screenX - 5 && X <= screenX + 5 && Y >= screenY - 5 && Y <= screenY + 5)
-			{
-				selectedIcao = acInfo.icao;
-				break;
-			}
+			selectedIcao = acInfo.icao;
+			break;
 		}
 	}
 	theController->selectAircraft(selectedIcao);
 }
-//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ObjectDisplayInit(TObject *Sender)
+{
+    // 이 이벤트 핸들러에 필요한 초기화 코드가 있다면 여기에 작성합니다.
+    // 현재는 비워두어도 오류는 해결됩니다.
+}
+void __fastcall TForm1::RenderTimerTimer(TObject *Sender)
+{
+    // Controller->Update(); // 주석 처리됨
+    // ObjectDisplay->Render(); // <-- 타이머가 돌 때마다 OpenGLPanel의 Render 함수를 호출
+    // ObjectDisplay->SwapBuffers(); // <-- 더블 버퍼링으로 화면에 표시
+}

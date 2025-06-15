@@ -790,8 +790,6 @@ object Form1: TForm1
     Font2D_Type.Height = -27
     Font2D_Type.Name = 'Arial'
     Font2D_Type.Style = [fsBold]
-    OnInit = ObjectDisplayInit
-    OnPaint = ObjectDisplayPaint
   end
   object MainMenu1: TMainMenu
     Left = 24
