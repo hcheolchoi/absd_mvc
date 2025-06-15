@@ -1,0 +1,56 @@
+#pragma hdrstop
+#include "NetworkService.h"
+#pragma package(smart_init)
+
+NetworkService::NetworkService(TComponent* owner, DataReceivedCallback callback)
+    : onDataReceived_(callback) {
+    socket_ = new TClientSocket(owner);
+    socket_->ClientType = ctNonBlocking;
+    socket_->OnConnect = onSocketConnect;
+    socket_->OnDisconnect = onSocketDisconnect;
+    socket_->OnRead = onSocketRead;
+    socket_->OnError = onSocketError;
+}
+
+NetworkService::~NetworkService() {
+    if (socket_->Active) {
+        socket_->Close();
+    }
+    delete socket_;
+}
+
+void NetworkService::connect(const std::string& host, int port) {
+    if (!socket_->Active) {
+        socket_->Host = host.c_str();
+        socket_->Port = port;
+        socket_->Open();
+    }
+}
+
+void NetworkService::disconnect() {
+    if (socket_->Active) {
+        socket_->Close();
+    }
+}
+
+bool NetworkService::isConnected() {
+    return socket_->Active;
+}
+
+void __fastcall NetworkService::onSocketConnect(TObject *Sender, TCustomWinSocket *Socket) {}
+void __fastcall NetworkService::onSocketDisconnect(TObject *Sender, TCustomWinSocket *Socket) {}
+
+void __fastcall NetworkService::onSocketRead(TObject *Sender, TCustomWinSocket *Socket) {
+    int count = Socket->ReceiveLength();
+    if (count > 0) {
+        std::vector<char> buffer(count);
+        Socket->ReceiveBuf(buffer.data(), count);
+        if (onDataReceived_) {
+            onDataReceived_(std::string(buffer.begin(), buffer.end()));
+        }
+    }
+}
+
+void __fastcall NetworkService::onSocketError(TObject *Sender, TCustomWinSocket *Socket, TErrorEvent ErrorEvent, int &ErrorCode) {
+    ErrorCode = 0;
+}

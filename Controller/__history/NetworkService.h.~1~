@@ -1,0 +1,29 @@
+#ifndef NetworkService_H
+#define NetworkService_H
+
+#include <Vcl.Sockets.hpp>
+#include <string>
+#include <functional>
+
+class NetworkService {
+public:
+    using DataReceivedCallback = std::function<void(const std::string&)>;
+
+    NetworkService(TComponent* owner, DataReceivedCallback callback);
+    ~NetworkService();
+
+    void connect(const std::string& host, int port);
+    void disconnect();
+    bool isConnected();
+
+private:
+    void __fastcall onSocketConnect(TObject *Sender, TCustomWinSocket *Socket);
+    void __fastcall onSocketDisconnect(TObject *Sender, TCustomWinSocket *Socket);
+    void __fastcall onSocketRead(TObject *Sender, TCustomWinSocket *Socket);
+    void __fastcall onSocketError(TObject *Sender, TCustomWinSocket *Socket, TErrorEvent ErrorEvent, int &ErrorCode);
+
+    TClientSocket* socket_;
+    DataReceivedCallback onDataReceived_;
+};
+
+#endif // NetworkService_H

@@ -1,0 +1,138 @@
+﻿#include <vcl.h>
+#pragma hdrstop
+
+#include "MainView.h" // 자신의 헤더 파일
+#include "../Controller/AppController.h" // 컨트롤러
+#include "../Model/Aircraft.h"       // 데이터를 표현하기 위해 모델의 Aircraft 클래스는 알아야 함
+#include "AreaDialog.h"              // 다른 폼을 띄우는 것은 View의 역할
+
+// --- 불필요한 include들을 모두 제거했습니다 ---
+
+// --- 라이브러리 링크는 유지합니다 ---
+#pragma package(smart_init)
+#pragma link "OpenGLPanel"
+#pragma link "Map\\libgefetch\\Win64\\Release\\libgefetch.a"
+#pragma link "Map\\zlib\\Win64\\Release\\zlib.a"
+#pragma link "Map\\jpeg\\Win64\\Release\\jpeg.a"
+#pragma link "Map\\png\\Win64\\Release\\png.a"
+#pragma link "cspin"
+#pragma resource "*.dfm"
+
+TForm1 *Form1;
+//---------------------------------------------------------------------------
+
+// --- 생성자: 컨트롤러를 생성하고 UI의 초기 상태만 설정합니다 ---
+__fastcall TForm1::TForm1(TComponent* Owner)
+	: TForm(Owner)
+{
+	// MVC 컨트롤러 생성
+	controller_ = std::make_unique<AppController>(this);
+
+	// 폼 디자이너에 있는 NetworkTimer의 속성 설정
+	NetworkTimer->Interval = 200; // 0.2초 간격
+	NetworkTimer->Enabled = false; // 처음에는 비활성화
+
+	// 초기 상태 메시지 표시
+	displayStatus("Ready. Press 'Connect' to start.");
+}
+//---------------------------------------------------------------------------
+
+// --- 소멸자: 컨트롤러를 안전하게 소멸시킵니다 ---
+__fastcall TForm1::~TForm1()
+{
+	// unique_ptr가 자동으로 controller_를 삭제해줍니다.
+}
+//---------------------------------------------------------------------------
+
+// --- 이벤트 핸들러: 모든 작업은 컨트롤러에 위임합니다 ---
+
+// 네트워크 타이머 이벤트 (주기적으로 컨트롤러에 데이터 확인 요청)
+void __fastcall TForm1::NetworkTimerTimer(TObject *Sender)
+{
+    if (controller_) {
+        controller_->checkForData();
+    }
+}
+
+// 연결 버튼 클릭 이벤트 (컨트롤러에 연결/해제 요청)
+void __fastcall TForm1::ConnectButtonClick(TObject *Sender)
+{
+    if(controller_) {
+        controller_->toggleConnection();
+    }
+}
+
+// 항공기 목록 아이템 선택 이벤트 (컨트롤러에 선택된 항공기 정보 전달)
+void __fastcall TForm1::AircraftListViewSelectItem(TObject *Sender, TListItem *Item, bool Selected)
+{
+    if (controller_ && Selected && Item) {
+        std::string icao = AnsiString(Item->Caption).c_str();
+        controller_->selectAircraft(icao);
+    }
+}
+//---------------------------------------------------------------------------
+
+// --- UI 업데이트 함수: 컨트롤러가 데이터를 주면 화면에 그리기만 합니다 ---
+
+// 컨트롤러가 호출하는 메인 디스플레이 업데이트 함수
+void TForm1::updateDisplay(const std::vector<const Aircraft*>& aircrafts)
+{
+    // 1. 왼쪽 리스트 뷰 업데이트
+    AircraftListView->Items->BeginUpdate();
+    AircraftListView->Items->Clear();
+    for (const auto& ac : aircrafts) {
+        TListItem *item = AircraftListView->Items->Add();
+        item->Caption = ac->getIcao24().c_str();
+        item->SubItems->Add(ac->getFlightId().c_str());
+        item->SubItems->Add(FloatToStr(ac->getLatitude()));
+        item->SubItems->Add(FloatToStr(ac->getLongitude()));
+        item->SubItems->Add(IntToStr((int)ac->getAltitude()));
+    }
+    AircraftListView->Items->EndUpdate();
+
+    // 2. 지도(OpenGL Panel)를 다시 그리라고 신호 보내기
+    // 실제 그리기는 ObjectDisplayPaint 이벤트에서 일어납니다.
+    ObjectDisplay->Invalidate();
+}
+
+// 상태바 메시지 업데이트
+void TForm1::displayStatus(const std::string& message)
+{
+    StatusBar->SimpleText = message.c_str();
+}
+
+// 선택된 항공기 상세 정보 표시
+void TForm1::displaySelectedAircraftDetails(const Aircraft* aircraft)
+{
+    if (aircraft) {
+        UnicodeString details;
+        details.sprintf(L"Selected: %s (%s) - Alt: %.0f ft",
+            aircraft->getIcao24().c_str(),
+            aircraft->getFlightId().c_str(),
+            aircraft->getAltitude()
+        );
+        displayStatus(AnsiString(details).c_str());
+    }
+}
+//---------------------------------------------------------------------------
+
+// --- OpenGL 및 지도 관련 렌더링 코드 ---
+// 이 부분은 순수 '그리기' 로직이므로 View에 남아있어도 괜찮습니다.
+// 하지만 데이터 소스는 컨트롤러를 통해 얻어와야 합니다. (이 부분은 다음 단계에서 수정)
+
+void __fastcall TForm1::ObjectDisplayPaint(TObject *Sender)
+{
+    // 화면을 지우고, 지도 배경을 그리는 등의 코드는 그대로 둡니다.
+    if (DrawMap->Checked) glClearColor(0.0,0.0,0.0,0.0);
+    else glClearColor(BG_INTENSITY, BG_INTENSITY, BG_INTENSITY, 0.0);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // g_EarthView->Render(DrawMap->Checked); // 지도 렌더링
+    
+    // TODO: 항공기를 그리는 로직.
+    // 이전처럼 HashTable을 직접 순회하는 대신,
+    // controller_가 제공하는 항공기 목록을 기반으로 그려야 합니다.
+    // 이 부분은 컨트롤러와 모델에 기능이 추가된 후 최종 완성됩니다.
+    // DrawObjects();
+}

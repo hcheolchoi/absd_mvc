@@ -1,0 +1,71 @@
+﻿// ------------------ View/MainView.h (이 코드로 전체 교체) ------------------
+#ifndef MainView_H
+#define MainView_H
+
+#include <System.Classes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.StdCtrls.hpp>
+#include <Vcl.Forms.hpp>
+#include <Vcl.ComCtrls.hpp>
+#include <Vcl.ExtCtrls.hpp>
+#include <Vcl.Dialogs.hpp>
+#include <Vcl.Samples.Spin.hpp>
+#include <Vcl.Menus.hpp>
+#include "cspin.h"
+#include "OpenGLPanel.h"
+#include <IdBaseComponent.hpp>
+#include <IdComponent.hpp>
+#include <IdTCPClient.hpp>
+#include <IdTCPConnection.hpp>
+
+#include <vector>
+#include <memory>
+#include <string>
+
+// 전방 선언
+class AppController;
+class Aircraft;
+class TOpenGLPanel;
+
+class TForm1 : public TForm
+{
+__published:	// IDE-managed Components
+	// DFM 파일에 실제로 존재하는 컴포넌트들의 선언입니다.
+	// 이 목록은 사용자님의 DFM 파일과 일치해야 합니다.
+	TPanel *Panel1;
+	TOpenGLPanel *ObjectDisplay;
+	TButton *ConnectButton;
+	TListView *AircraftListView;
+	TStatusBar *StatusBar;
+	TTimer *NetworkTimer;
+	TLabel *Label1;
+	// ... 기타 DFM에 있는 UI 컴포넌트들 ...
+
+	// --- 이벤트 핸들러 선언 ---
+	void __fastcall FormCreate(TObject *Sender);
+	void __fastcall FormDestroy(TObject *Sender);
+	void __fastcall NetworkTimerTimer(TObject *Sender);
+	void __fastcall ConnectButtonClick(TObject *Sender);
+	void __fastcall AircraftListViewSelectItem(TObject *Sender, TListItem *Item, bool Selected);
+	void __fastcall ObjectDisplayPaint(TObject *Sender);
+	void __fastcall ObjectDisplayInit(TObject *Sender);
+
+
+private:	// User declarations
+	std::unique_ptr<AppController> controller_;
+	std::vector<const Aircraft*> currentAircrafts_; // 현재 항공기 목록을 저장할 변수
+
+public:		// User declarations
+	__fastcall TForm1(TComponent* Owner);
+	__fastcall ~TForm1();
+
+	TTimer* getNetworkTimer() const { return NetworkTimer; }
+	// --- 컨트롤러가 호출할 함수들 ---
+	void updateDisplay(const std::vector<const Aircraft*>& aircrafts);
+	void displayStatus(const std::string& message);
+	void displaySelectedAircraftDetails(const Aircraft* aircraft);
+};
+//---------------------------------------------------------------------------
+extern PACKAGE TForm1 *Form1;
+//---------------------------------------------------------------------------
+#endif

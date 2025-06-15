@@ -1,0 +1,130 @@
+// ------------------ View/MainView.h (이 코드로 전체 교체) ------------------
+#ifndef MainView_H
+#define MainView_H
+
+#include <System.Classes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.StdCtrls.hpp>
+#include <Vcl.Forms.hpp>
+#include <Vcl.ComCtrls.hpp>
+#include <Vcl.ExtCtrls.hpp>
+#include <Vcl.Dialogs.hpp>
+#include <Vcl.Samples.Spin.hpp>
+
+#include <vector>
+#include <memory>
+#include <string>
+
+// 전방 선언
+class AppController;
+class Aircraft;
+class TOpenGLPanel; // OpenGLPanel은 포인터로만 사용하므로 전방 선언
+
+// 클래스 이름은 TForm1을 그대로 사용합니다.
+class TForm1 : public TForm
+{
+__published:	// IDE-managed Components
+    // 이 목록은 기존 DisplayGUI.dfm에 있던 컴포넌트 이름과 일치해야 합니다.
+    // DFM 파일에 있는 컴포넌트들만 남기고, 없는 것은 이 목록에서 지워야 합니다.
+	TPageControl *PageControl1;
+	TTabSheet *TabSheet1;
+	TPanel *Panel1;
+	TButton *ConnectButton; // SBS Connect 버튼으로 사용
+	TEdit *SBSIpAddress;
+	TButton *UseSBSLocal;
+	TButton *UseSBSRemote;
+	TButton *SBSRecordButton;
+	TButton *SBSPlaybackButton;
+	TTabSheet *TabSheet2;
+	TPanel *Panel2;
+	TButton *RawConnectButton;
+	TEdit *RawIpAddress;
+	TButton *RawRecordButton;
+	TButton *RawPlaybackButton;
+	TTabSheet *TabSheet3;
+	TButton *ZoomOut;
+	TButton *ZoomIn;
+	TCheckBox *DrawMap;
+	TComboBox *MapComboBox;
+	TCheckBox *PurgeStale;
+	TSpinEdit *CSpinStaleTime;
+	TCheckBox *CycleImages;
+	TCheckBox *TimeToGoCheckBox;
+	TTrackBar *TimeToGoTrackBar;
+	TLabel *TimeToGoText;
+	TTabSheet *TabSheet4;
+	TGroupBox *GroupBox1;
+	TLabel *Label1;
+	TLabel *Label2;
+	TLabel *Label3;
+	TLabel *Label4;
+	TLabel *Label5;
+	TLabel *Label6;
+	TLabel *Label7;
+	TLabel *Label8;
+	TLabel *ICAOLabel;
+	TLabel *FlightNumLabel;
+	TLabel *CLatLabel;
+	TLabel *CLonLabel;
+	TLabel *SpdLabel;
+	TLabel *HdgLabel;
+	TLabel *AltLabel;
+	TLabel *MsgCntLabel;
+	TLabel *TrkLastUpdateTimeLabel;
+	TGroupBox *CPAData;
+	TLabel *Label10;
+	TLabel *Label11;
+	TLabel *CpaTimeValue;
+	TLabel *CpaDistanceValue;
+	TTabSheet *TabSheet5;
+	TButton *Insert;
+	TButton *Complete;
+	TButton *Cancel;
+	TButton *Delete;
+	TButton *LoadARTCCBoundaries1;
+	TListView *AreaListView;
+	TStatusBar *StatusBar;
+	TLabel *Lat;
+	TLabel *Lon;
+	TLabel *SystemTime;
+	TLabel *AircraftCountLabel;
+	TLabel *ViewableAircraftCountLabel;
+	TOpenGLPanel *ObjectDisplay; // OpenGLPanel 컴포넌트
+	TTimer *Timer1; // 기존 타이머. 이제 UI 업데이트용으로만 사용 가능
+	TTimer *Timer2; // Purge 용 타이머
+    TTimer *NetworkTimer; // Indy 네트워크 확인용 타이머
+	TSaveDialog *RecordRawSaveDialog;
+	TOpenDialog *PlaybackRawDialog;
+	TSaveDialog *RecordSBSSaveDialog;
+	TOpenDialog *PlaybackSBSDialog;
+	TMainMenu *MainMenu1;
+	TMenuItem *File1;
+	TMenuItem *Exit1;
+
+    // --- MVC를 위해 추가된 이벤트 핸들러 ---
+	void __fastcall FormCreate(TObject *Sender);
+	void __fastcall FormDestroy(TObject *Sender);
+    void __fastcall NetworkTimerTimer(TObject *Sender);
+    
+    // --- 기존 이벤트 핸들러 (내용은 .cpp에서 수정) ---
+    void __fastcall ConnectButtonClick(TObject *Sender); // 기존 SBSConnectButtonClick 역할
+    void __fastcall AircraftListViewSelectItem(TObject *Sender, TListItem *Item, bool Selected);
+	void __fastcall ObjectDisplayPaint(TObject *Sender);
+    // ... DFM에 연결된 다른 모든 이벤트 핸들러 선언 ...
+
+private:	// User declarations
+	std::unique_ptr<AppController> controller_;
+    // OpenGLPanel은 DFM에 의해 생성되므로 포인터만 유지 (new로 생성 안함)
+    
+public:		// User declarations
+	__fastcall TForm1(TComponent* Owner);
+    
+    // --- 컨트롤러가 뷰를 제어하기 위해 호출하는 함수들 (새로 추가) ---
+    void updateDisplay(const std::vector<const Aircraft*>& aircrafts);
+    void displayStatus(const std::string& message);
+    void displaySelectedAircraftDetails(const Aircraft* aircraft);
+};
+//---------------------------------------------------------------------------
+extern PACKAGE TForm1 *Form1;
+//---------------------------------------------------------------------------
+#endif
