@@ -1,46 +1,34 @@
-// Controller/AppController.h
+//---------------------------------------------------------------------------
+#ifndef AppControllerH
+#define AppControllerH
+//---------------------------------------------------------------------------
+#include "View/MainView.h"
+#include "Model/AircraftModel.h"
+#include "Controller/NetworkService.h"
+#include "Controller/DataParser.h"
 
-#ifndef AppController_h
-#define AppController_h
-
-#include <vector>
-#include <string>
-
-// View로 전달될 데이터 전송 객체 (DTO)
-struct AircraftInfo
-{
-	double lat;
-	double lon;
-	double altitude;
-	unsigned int icao;
-	std::string callsign;
-	bool selected;
-};
-
-// 전방 선언
-class TForm1;
+// Forward declaration
+class TMainViewForm;
 class AircraftModel;
-class NetworkService;
 
 class AppController
 {
 private:
-	AircraftModel* theModel;
-	NetworkService* networkService;
-	TForm1* theView;
-
-	void onDataReceived(const std::vector<char>& data);
+    TMainViewForm* mainView;
+    AircraftModel* aircraftModel;
+    NetworkService* networkService;
+    DataParser* dataParser;
 
 public:
-	AppController(TForm1* view);
-	~AppController();
+    AppController();
+    ~AppController();
 
-	void start();
-	void connectToServer(const std::string& ip, int port);
+    void Run();
 
-	std::vector<AircraftInfo> getAllAircraftInfo();
-	void selectAircraft(unsigned int icao);
-	std::string getSelectedAircraftInfoText();
+    // View로부터 UI 이벤트를 처리하기 위한 함수들
+    void HandleMapPan(int deltaX, int deltaY);
+    void HandleMapZoom(int delta);
+    void HandleAircraftSelection(int screenX, int screenY);
 };
 
 #endif

@@ -1,78 +1,109 @@
-﻿// View/MainView.h
-
+﻿//---------------------------------------------------------------------------
 #ifndef MainViewH
 #define MainViewH
-
+//---------------------------------------------------------------------------
 #include <System.Classes.hpp>
 #include <Vcl.Controls.hpp>
 #include <Vcl.StdCtrls.hpp>
 #include <Vcl.Forms.hpp>
-#include <Vcl.ExtCtrls.hpp>
+#include "Components/OpenGLv0.5BDS2006/Component/OpenGLPanel.h"
 #include <Vcl.ComCtrls.hpp>
+#include <Vcl.ExtCtrls.hpp>
 #include <Vcl.Menus.hpp>
 #include <Vcl.Dialogs.hpp>
-#include <Vcl.Imaging.jpeg.hpp>
-#include "OpenGLPanel.h"
 #include "Model/IModelObserver.h"
+#include <System.Types.hpp>
 #include "cspin.h"
+#include "OpenGLPanel.h"
 #include <IdBaseComponent.hpp>
 #include <IdComponent.hpp>
 #include <IdTCPClient.hpp>
 #include <IdTCPConnection.hpp>
 
+// Forward declarations
 class AppController;
+class AircraftModel;
+class EarthView;
 
-class TForm1 : public TForm, public IModelObserver
+//---------------------------------------------------------------------------
+class TMainViewForm : public TForm, public IModelObserver
 {
-__published:
-	TMainMenu *MainMenu1; TMenuItem *File1; TMenuItem *Exit1;
-	TMenuItem *Record1; TMenuItem *PlayBack1; TMenuItem *Stop1;
-	TMenuItem *Help1; TMenuItem *About1;	TPageControl *PageControl1;
-	TTabSheet *TabSheet1; TPanel *Panel1; TPanel *Panel2;
-	TListView *ListView1; TStatusBar *StatusBar1; TTabSheet *TabSheet2;
-	TLabel *Label1; TEdit *IPAddress; TLabel *Label2; TEdit *Port;
-	TButton *ConnectButton;	TButton *DisconnectButton; TRadioGroup *DataSource;
-	TCheckBox *RecordRawCheckBox; TCheckBox *RecordSBSCheckBox;
-	TOpenDialog *OpenDialog1; TSaveDialog *SaveDialog1;
-	TMenuItem *LoadAircraftDatabase1; TMenuItem *LoadARTCCBoundaries1;
-	TListView *AreaListView; TButton *Insert; TButton *Delete;
-	TButton *Complete; TButton *Cancel; TImage *Image1;
-	TLabel *Label3; TEdit *OwnshipICAO; TCheckBox *CheckBoxCPA;
-	TLabel *Label4; TCheckBox *CheckBoxCollisionCourse;
-	TLabel *Label5; TLabel *Label6; TOpenGLPanel *OpenGLPanel1;
-	TTimer *Timer1;	TMemo *Memo1;
-	TTrackBar *TrackBar1;
-	TStaticText *StaticText1;
-	TCSpinEdit *CSpinEdit1;
-	TComboBox *ComboBox1;
-	TIdTCPClient *IdTCPClient;
+__published:	// IDE-managed Components
+	TPanel *Panel_Top;
+	TStatusBar *StatusBar_Bottom;
+	TOpenGLPanel *OpenGLPanel1;
+	TTimer *RenderTimer;
+	TMainMenu *MainMenu1;
+	TMenuItem *FileMenu;
+	TMenuItem *ExitMenuItem;
+	TMenuItem *MapMenu;
+	TMenuItem *SourceMenu;
+	TMenuItem *GoogleMapsMenu;
+	TMenuItem *SkyVectorMenu;
+	TMenuItem *VFRSectionalMenu;
+	TMenuItem *IFRLowMenu;
+	TMenuItem *IFRHighMenu;
+	TMenuItem *DataMenu;
+	TMenuItem *ConnectMenuItem;
+	TMenuItem *DisconnectMenuItem;
+	TMenuItem *N1;
+	TMenuItem *RecordRawDataMenu;
+	TMenuItem *PlaybackRawDataMenu;
+	TOpenDialog *OpenDialog1;
+	TSaveDialog *SaveDialog1;
+	TMenuItem *AreaMenu;
+	TMenuItem *InsertAreaMenu;
+	TMenuItem *CompleteAreaMenu;
+	TMenuItem *CancelAreaMenu;
+	TListView *AreaListView;
+	TPanel *Panel_Right;
+	TLabel *Label1;
+	TMenuItem *DeleteAreaMenu;
+	TMenuItem *HelpMenu;
+	TMenuItem *AboutMenu;
+
+	// Event Handlers
 	void __fastcall FormCreate(TObject *Sender);
+	void __fastcall FormDestroy(TObject *Sender);
 	void __fastcall OpenGLPanel1Paint(TObject *Sender);
-	void __fastcall Timer1Timer(TObject *Sender);
 	void __fastcall OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift, int X, int Y);
-	void __fastcall ConnectButtonClick(TObject *Sender);
-    void __fastcall Exit1Click(TObject *Sender);
-	void __fastcall InsertClick(TObject *Sender);
-	void __fastcall DeleteClick(TObject *Sender);
-    void __fastcall CompleteClick(TObject *Sender);
-    void __fastcall CancelClick(TObject *Sender);
-	void __fastcall ObjectDisplayInit(TObject *Sender);
+	void __fastcall OpenGLPanel1MouseMove(TObject *Sender, TShiftState Shift, int X, int Y);
+	void __fastcall OpenGLPanel1MouseUp(TObject *Sender, TMouseButton Button, TShiftState Shift, int X, int Y);
 	void __fastcall RenderTimerTimer(TObject *Sender);
+	void __fastcall ExitMenuItemClick(TObject *Sender);
+	void __fastcall ConnectMenuItemClick(TObject *Sender);
+	void __fastcall DisconnectMenuItemClick(TObject *Sender);
+	void __fastcall AboutMenuClick(TObject *Sender);
 
-private:
-	AppController* theController;
-	void DrawAircrafts(); void DrawLabels();
 
-public:
-	__fastcall TForm1(TComponent* Owner);
-	// [수정] 소멸자에 'override' 키워드 추가
-	__fastcall ~TForm1() override;
-	
-    // IModelObserver 인터페이스 구현
-    HRESULT __stdcall QueryInterface(const GUID&, void**) override { return E_NOTIMPL; }
-    ULONG __stdcall AddRef() override { return 0; }
-    ULONG __stdcall Release() override { return 0; }
-	void __fastcall onModelUpdate() override;
+private:	// User declarations
+    AppController* controller;
+    AircraftModel* model;
+
+    EarthView *g_EarthView;
+
+    int lastMouseX, lastMouseY;
+    bool isPanning;
+
+    void InitializeOpenGL();
+    void DrawMap();
+    void DrawAircraft();
+
+public:		// User declarations
+	__fastcall TMainViewForm(TComponent* Owner);
+
+    void SetController(AppController* ctrl);
+    void SetModel(AircraftModel* mdl);
+
+    // IModelObserver interface
+    virtual void Update();
+
+    // Map manipulation methods
+    void PanMap(int deltaX, int deltaY);
+    void ZoomMap(int delta);
+    TPointF ScreenToGeo(int screenX, int screenY);
 };
-extern PACKAGE TForm1 *Form1;
+//---------------------------------------------------------------------------
+extern PACKAGE TMainViewForm *MainViewForm;
+//---------------------------------------------------------------------------
 #endif

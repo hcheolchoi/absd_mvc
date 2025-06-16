@@ -1,48 +1,36 @@
-// Model/Aircraft.h
-
-#ifndef Aircraft_H
-#define Aircraft_H
-
-#include <string>
+//---------------------------------------------------------------------------
+#ifndef AircraftModelH
+#define AircraftModelH
+//---------------------------------------------------------------------------
 #include <vector>
-#include <ctime>
+#include "Model/IModelObserver.h"
+#include "HashTable/Lib/ght_hash_table.h"
+#include "Model/Aircraft.h" // <<-- 이 줄을 추가해야 합니다!
 
-class Aircraft {
-public:
-    // [수정] ICAO 타입을 unsigned int로 변경
-    Aircraft(unsigned int icao24);
-    Aircraft(); // 기본 생성자 추가
-
-    void updatePosition(double lat, double lon, double alt);
-    void updateSpeedAndDirection(double speed, double track);
-    void setFlightId(const std::string& flightId);
-    void setOnGround(bool groundStatus);
-
-    // [수정] ICAO 타입을 unsigned int로 변경
-    unsigned int getIcao24() const;
-    std::string getFlightId() const;
-    double getLatitude() const;
-    double getLongitude() const;
-    double getAltitude() const;
-    double getSpeed() const;
-    double getTrack() const;
-    bool isOnGround() const;
-    time_t getLastUpdateTime() const;
-    
-    // MVC 패턴에서 선택 여부를 표시하기 위해 추가
-    bool selected;
-
-
+class AircraftModel
+{
 private:
-    unsigned int icao24_; // [수정] std::string -> unsigned int
-    std::string flightId_;
-    double latitude_;
-    double longitude_;
-    double altitude_;
-    double speed_;
-    double track_;
-    bool onGround_;
-    time_t lastUpdateTime_;
+    std::vector<IModelObserver*> observers;
+    ght_hash_table_t* aircraftHashTable;
+    uint32_t selectedAircraftICAO;
+
+    void NotifyObservers();
+
+public:
+    AircraftModel();
+    ~AircraftModel();
+
+    void AddObserver(IModelObserver* observer);
+
+    void AddOrUpdateAircraft(TADS_B_Aircraft* aircraft);
+    void RemoveStaleAircraft();
+
+    TADS_B_Aircraft* GetAircraft(uint32_t icao);
+    std::vector<TADS_B_Aircraft*> GetAllAircraft();
+
+    void SetSelectedAircraft(uint32_t icao);
+    uint32_t GetSelectedAircraftICAO();
+    uint32_t FindAircraftAtPos(double lat, double lon);
 };
 
-#endif // Aircraft_H
+#endif

@@ -1,106 +1,66 @@
-// Controller/AppController.cpp
-
+//---------------------------------------------------------------------------
 #pragma hdrstop
 
 #include "AppController.h"
-#include "MainView.h"
-#include "DataParser.h"
-#include "Model/AircraftModel.h"
-#include "NetworkService.h"
-#include <sstream>
-#include <iomanip>
-#include <vector>
+#include <vcl.h>
 
+//---------------------------------------------------------------------------
 #pragma package(smart_init)
 
-AppController::AppController(TForm1* view)
-: theView(view), networkService(nullptr), theModel(nullptr)
-{
-	theModel = new AircraftModel();
-	networkService = new NetworkService();
-	theModel->addObserver(theView);
+AppController::AppController() {
+    // 1. Model 생성
+    aircraftModel = new AircraftModel();
 
-	networkService->setDataCallback([this](const std::vector<char>& data) {
-		this->onDataReceived(data);
-	});
+    // 2. View 생성
+    Application->CreateForm(__classid(TMainViewForm), &mainView);
+
+    // 3. 다른 Controller 컴포넌트 생성
+    dataParser = new DataParser(aircraftModel);
+    networkService = new NetworkService(dataParser); // NetworkService는 파싱을 DataParser에 위임
+
+    // 4. View와 Model 연결
+    // Model의 데이터가 변경되면 View가 알림을 받을 수 있도록 Observer로 등록
+    aircraftModel->AddObserver(mainView);
+    // View가 Model의 데이터를 직접 읽을 수 있도록 포인터 전달
+    mainView->SetModel(aircraftModel);
+
+    // 5. View와 Controller 연결
+    // View에서 발생하는 UI 이벤트를 Controller가 처리하도록 설정
+    mainView->SetController(this);
 }
 
-AppController::~AppController()
-{
-	if(networkService) networkService->disconnect();
-	if(theModel) theModel->removeObserver(theView);
-	delete theModel;
-	delete networkService;
+AppController::~AppController() {
+    // AppController가 모든 주요 객체의 소유자이므로 여기서 해제
+    delete networkService;
+    delete dataParser;
+    delete aircraftModel;
+    // VCL Form은 Application 객체가 관리하므로 직접 delete하지 않음
 }
 
-void AppController::start()
-{
-	// 초기화 로직
+void AppController::Run() {
+    // 네트워크 서비스 시작 (백그라운드 데이터 수신)
+    networkService->Start("127.0.0.1", 30005); // 예시 주소/포트
+    // VCL 애플리케이션 메인 루프 시작
+    Application->Run();
 }
 
-void AppController::connectToServer(const std::string& ip, int port)
-{
-	if(networkService) {
-		networkService->connect(ip.c_str(), port);
-	}
+void AppController::HandleMapPan(int deltaX, int deltaY) {
+    if (mainView) {
+        mainView->PanMap(deltaX, deltaY);
+    }
 }
 
-void AppController::onDataReceived(const std::vector<char>& data)
-{
-    std::string jsonData(data.begin(), data.end());
-	if (!jsonData.empty())
-	{
-		std::vector<Aircraft> aircrafts = DataParser::parse(jsonData);
-		if(theModel) theModel->updateAircrafts(aircrafts);
-	}
+void AppController::HandleMapZoom(int delta) {
+    if (mainView) {
+        mainView->ZoomMap(delta);
+    }
 }
 
-std::vector<AircraftInfo> AppController::getAllAircraftInfo()
-{
-	std::vector<AircraftInfo> result;
-	if (theModel)
-	{
-		std::vector<Aircraft> all_ac = theModel->getAllAircraft();
-		result.reserve(all_ac.size());
-
-		for(const auto& ac : all_ac)
-		{
-			AircraftInfo info;
-			info.lat = ac.getLatitude();
-			info.lon = ac.getLongitude();
-			info.altitude = ac.getAltitude();
-			info.icao = ac.getIcao24();
-			info.callsign = ac.getFlightId();
-			info.selected = ac.selected;
-			result.push_back(info);
-		}
-	}
-	return result;
-}
-
-void AppController::selectAircraft(unsigned int icao)
-{
-	if (theModel)
-	{
-		theModel->selectAircraft(icao);
-	}
-}
-
-std::string AppController::getSelectedAircraftInfoText()
-{
-	if (!theModel) return "";
-
-	const Aircraft* ac = theModel->getSelectedAircraft();
-	if (ac)
-	{
-		std::stringstream ss;
-		ss << "Callsign: " << ac->getFlightId() << "\n"
-		   << "ICAO24: " << std::hex << ac->getIcao24() << std::dec << "\n"
-		   << "Altitude: " << static_cast<int>(ac->getAltitude()) << " m\n"
-           << "Speed: " << ac->getSpeed() * 3.6 << " km/h\n"
-		   << "Latitude: " << std::fixed << std::setprecision(4) << ac->getLatitude() << "\n"
-		   << "Longitude: " << std::fixed << std::setprecision(4) << ac->getLongitude();
-		return ss.str();
-	}
-	return "No aircraft selected.";
+void AppController::HandleAircraftSelection(int screenX, int screenY) {
+    if (aircraftModel && mainView) {
+        // View에 스크린 좌표를 지리적 좌표로 변환 요청
+        TPointF geoCoords = mainView->ScreenToGeo(screenX, screenY);
+        uint32_t selectedICAO = aircraftModel->FindAircraftAtPos(geoCoords.Y, geoCoords.X);
+        aircraftModel->SetSelectedAircraft(selectedICAO);
+    }
 }

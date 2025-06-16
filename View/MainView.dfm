@@ -1,4 +1,4 @@
-object Form1: TForm1
+object MainViewForm: TMainViewForm
   Left = 0
   Top = 0
   Caption = 'ADS-B Viewer'
@@ -14,6 +14,7 @@ object Form1: TForm1
   Menu = MainMenu1
   Position = poScreenCenter
   WindowState = wsMaximized
+  OnCreate = FormCreate
   TextHeight = 12
   object Label16: TLabel
     Left = 13
@@ -790,6 +791,7 @@ object Form1: TForm1
     Font2D_Type.Height = -27
     Font2D_Type.Name = 'Arial'
     Font2D_Type.Style = [fsBold]
+    OnClick = ObjectDisplayClick
   end
   object MainMenu1: TMainMenu
     Left = 24

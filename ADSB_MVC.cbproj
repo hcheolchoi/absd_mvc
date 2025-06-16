@@ -266,8 +266,8 @@
             <DependentOn>View\MainView.h</DependentOn>
             <BuildOrder>20</BuildOrder>
         </CppCompile>
-        <FormResources Include="AreaDialog.dfm"/>
         <FormResources Include="View\MainView.dfm"/>
+        <FormResources Include="AreaDialog.dfm"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

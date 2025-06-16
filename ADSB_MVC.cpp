@@ -4,8 +4,8 @@
 #pragma hdrstop
 #include <tchar.h>
 //---------------------------------------------------------------------------
-USEFORM("AreaDialog.cpp", AreaConfirm);
-USEFORM("View\MainView.cpp", Form1);
+USEFORM("AreaDialog.cpp", AreaDialog);
+USEFORM("View\\MainView.cpp", MainViewForm);
 //---------------------------------------------------------------------------
 int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 {
@@ -13,8 +13,8 @@ int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 	{
 		Application->Initialize();
 		Application->MainFormOnTaskBar = true;
-		Application->CreateForm(__classid(TForm1), &Form1);
-		Application->CreateForm(__classid(TAreaConfirm), &AreaConfirm);
+		Application->CreateForm(__classid(TMainViewForm), &MainViewForm);
+		Application->CreateForm(__classid(TAreaDialog), &AreaDialog);
 		Application->Run();
 	}
 	catch (Exception &exception)

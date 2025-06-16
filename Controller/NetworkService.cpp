@@ -1,97 +1,111 @@
-// Controller/NetworkService.cpp
-
+//---------------------------------------------------------------------------
 #pragma hdrstop
 
-#include "Controller/NetworkService.h"
-#include <IdGlobal.hpp>
+#include "NetworkService.h"
+#include "DataParser.h"
+#include <System.SysUtils.hpp>
 
-// --- TTCPClientRawHandleThread ---
-__fastcall TTCPClientRawHandleThread::TTCPClientRawHandleThread(TIdTCPClient *AClient, NetworkService* parent)
-	: TThread(false), TCPClient(AClient), parentService(parent)
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+//--- TNetworkThread --------------------------------------------------------
+
+__fastcall TNetworkThread::TNetworkThread(const std::string& host, int port, DataParser* parser)
+    : TThread(true), FHost(host), FPort(port), FDataParser(parser), FTcpClient(nullptr)
 {
+    FreeOnTerminate = true; // 쓰레드 종료 시 자동으로 메모리 해제
 }
 
-void __fastcall TTCPClientRawHandleThread::Execute()
+void __fastcall TNetworkThread::Execute()
 {
-	Idglobal::TIdBytes buffer;
+    // 쓰레드가 시작되면 이 함수가 호출됩니다.
+    FTcpClient = new TIdTCPClient(NULL);
+    FTcpClient->Host = FHost.c_str();
+    FTcpClient->Port = FPort;
 
-	while (!Terminated)
-	{
-		if (TCPClient && TCPClient->IOHandler && TCPClient->Connected())
-		{
-			try {
-                // [수정] ReadBytes를 호출하여 버퍼를 직접 채우도록 함 (반환값 없음)
-                // -1 인자는 현재 읽을 수 있는 모든 데이터를 읽으라는 의미입니다.
-				TCPClient->IOHandler->ReadBytes(buffer, -1, false);
+    while (!Terminated)
+    {
+        try
+        {
+            // 서버에 연결 시도
+            if (!FTcpClient->Connected())
+            {
+                // Synchronize를 사용하여 UI 쓰레드에서 상태 표시 (선택 사항)
+                // Synchronize([this]() { StatusBar_Bottom->SimpleText = "Connecting..."; });
+                FTcpClient->Connect();
+            }
 
-                // [수정] 읽은 바이트 수는 버퍼의 길이로 확인
-				int bytesRead = buffer.Length;
+            // 연결된 상태에서 데이터 수신
+            while (!Terminated && FTcpClient->Connected())
+            {
+                std::string sbs_message = AnsiString(FTcpClient->IOHandler->ReadLn()).c_str();
+                if (!sbs_message.empty() && FDataParser)
+                {
+                    // 수신된 데이터를 파서로 전달
+                    FDataParser->ParseMessage(sbs_message);
+                }
+            }
+        }
+        catch (const Exception& e)
+        {
+            // 연결 오류 발생 시
+            if (FTcpClient->Connected())
+            {
+                FTcpClient->Disconnect();
+            }
+            // 오류 로그 출력 (선택 사항)
+            // Synchronize([&]() { ShowMessage("Network Error: " + e.Message); });
+        }
 
-				if (bytesRead > 0)
-				{
-					if (parentService) {
-						std::vector<char> receivedData;
-						receivedData.resize(bytesRead);
-						if (bytesRead > 0) {
-                            // TIdBytes는 내부적으로 Byte(unsigned char) 배열이므로 포인터를 직접 사용 가능
-							memcpy(&receivedData[0], &buffer[0], bytesRead);
-						}
-						parentService->onRawDataReceived(receivedData);
-					}
-				}
-			} catch(...) { /* 예외 처리 */ }
-		} else {
-			Sleep(100);
-		}
-	}
+        // 재연결 시도 전 잠시 대기
+        if (!Terminated)
+        {
+            Sleep(5000); // 5초 후 재시도
+        }
+    }
+
+    // 쓰레드 종료 전 리소스 정리
+    if (FTcpClient->Connected())
+    {
+        FTcpClient->Disconnect();
+    }
+    delete FTcpClient;
+    FTcpClient = nullptr;
 }
 
-// --- NetworkService ---
-NetworkService::NetworkService() : clientThread(nullptr)
+
+//--- NetworkService --------------------------------------------------------
+
+NetworkService::NetworkService(DataParser* parser)
+    : FDataParser(parser), FNetworkThread(nullptr)
 {
-	tcpClient = std::make_unique<TIdTCPClient>(nullptr);
 }
 
 NetworkService::~NetworkService()
 {
-	disconnect();
+    Stop();
 }
 
-void NetworkService::setDataCallback(std::function<void(const std::vector<char>&)> cb)
+void NetworkService::Start(const std::string& host, int port)
 {
-	this->onDataCallback = cb;
+    // 기존 쓰레드가 있으면 종료 후 새로 시작
+    if (FNetworkThread)
+    {
+        Stop();
+    }
+    // 새로운 네트워크 쓰레드를 생성하고 시작
+    FNetworkThread = new TNetworkThread(host, port, FDataParser);
+    FNetworkThread->Start();
 }
 
-void NetworkService::onRawDataReceived(const std::vector<char>& data)
+void NetworkService::Stop()
 {
-	if (onDataCallback) {
-		onDataCallback(data);
-	}
+    if (FNetworkThread)
+    {
+        // 쓰레드에 종료 신호를 보내고 끝날 때까지 대기
+        FNetworkThread->Terminate();
+        // FNetworkThread->WaitFor(); // FreeOnTerminate=true일 경우 WaitFor는 교착 상태를 유발할 수 있음
+        FNetworkThread = nullptr;
+    }
 }
-
-void NetworkService::connect(const String& ip, int port)
-{
-	if (tcpClient->Connected()) disconnect();
-	try {
-		tcpClient->Host = ip;
-		tcpClient->Port = port;
-		tcpClient->Connect();
-		if (tcpClient->Connected())
-		{
-			clientThread = new TTCPClientRawHandleThread(tcpClient.get(), this);
-		}
-	} catch (...) { /* 연결 실패 처리 */ }
-}
-
-void NetworkService::disconnect()
-{
-	if (clientThread) {
-		clientThread->Terminate();
-		clientThread->WaitFor();
-		delete clientThread;
-		clientThread = nullptr;
-	}
-	if (tcpClient && tcpClient->Connected()) {
-		tcpClient->Disconnect();
-	}
-}
+//---------------------------------------------------------------------------

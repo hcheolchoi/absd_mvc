@@ -1,159 +1,190 @@
-﻿// View/MainView.cpp
-
+﻿//---------------------------------------------------------------------------
 #include <vcl.h>
 #pragma hdrstop
 
 #include "MainView.h"
 #include "Controller/AppController.h"
-#include "AreaDialog.h" // 파일 이름은 AreaDialog.h, 내용은 TAreaConfirm
-#include <gl\gl.h>
-#include <gl\glu.h>
-#include <vector>
+#include "Model/AircraftModel.h"
+#include "Utils/ntds2d.h"
+#include "Map/MapSrc/FlatEarthView.h" // 지도 관련 헤더
+#include "Map/MapSrc/Texture.h"      // 지도 관련 헤더
 
-// LatLonConv 클래스 직접 삽입
-class LatLonConv {
-public:
-    static void convert(double lat, double lon, double& x, double& y, int width, int height);
-};
-void LatLonConv::convert(double lat, double lon, double& x, double& y, int width, int height) {
-    x = (lon + 180.0) * (static_cast<double>(width) / 360.0);
-    y = (90.0 - lat) * (static_cast<double>(height) / 180.0);
-}
-
+//---------------------------------------------------------------------------
 #pragma package(smart_init)
+#pragma link "cspin"
+#pragma link "OpenGLPanel"
 #pragma resource "*.dfm"
-TForm1 *Form1;
-
-__fastcall TForm1::TForm1(TComponent* Owner) : TForm(Owner), theController(nullptr) {}
-
-__fastcall TForm1::~TForm1()
+TMainViewForm *VCL_MainView;
+//---------------------------------------------------------------------------
+__fastcall TMainViewForm::TMainViewForm(TComponent* Owner)
+    : TForm(Owner), controller(nullptr), model(nullptr), isPanning(false), g_EarthView(nullptr)
 {
-	delete theController;
 }
-
-void __fastcall TForm1::FormCreate(TObject *Sender)
+//---------------------------------------------------------------------------
+void TMainViewForm::SetController(AppController* ctrl)
 {
-	theController = new AppController(this);
-	theController->start();
+    this->controller = ctrl;
 }
-
-void TForm1::onModelUpdate()
+//---------------------------------------------------------------------------
+void TMainViewForm::SetModel(AircraftModel* mdl)
 {
-	if(theController) {
-		Memo1->Text = AnsiString(theController->getSelectedAircraftInfoText().c_str());
-	}
+    this->model = mdl;
+}
+//---------------------------------------------------------------------------
+void TMainViewForm::Update()
+{
+    // Model이 변경되었음을 알림 -> 화면을 다시 그리도록 요청
+    OpenGLPanel1->Invalidate();
+}
+//---------------------------------------------------------------------------
+void TMainViewForm::FormCreate(TObject *Sender)
+{
+    // 원본의 지도 초기화 로직 수행
+    g_EarthView = new FlatEarthView();
+    g_EarthView->SetScreenSize(OpenGLPanel1->Width, OpenGLPanel1->Height);
+    g_EarthView->SetViewCenter(40.73, -80.33); // 예시: 피츠버그 근처
+    g_EarthView->SetZoom(8);
+
+    InitializeOpenGL();
+    InitNTDS(); // ntds2d.cpp의 심볼 초기화
+}
+//---------------------------------------------------------------------------
+void TMainViewForm::FormDestroy(TObject *Sender)
+{
+    delete g_EarthView;
+    ReleaseNTDS(); // ntds2d.cpp의 리소스 해제
+}
+//---------------------------------------------------------------------------
+void TMainViewForm::InitializeOpenGL()
+{
+    OpenGLPanel1->MakeCurrent();
+    // 기본적인 OpenGL 상태 설정
+    glClearColor(0.0f, 0.2f, 0.4f, 1.0f); // 어두운 파란색 배경
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+//---------------------------------------------------------------------------
+void TMainViewForm::OpenGLPanel1Paint(TObject *Sender)
+{
+    OpenGLPanel1->MakeCurrent();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // 뷰포트 및 프로젝션 설정
+    g_EarthView->SetScreenSize(OpenGLPanel1->Width, OpenGLPanel1->Height);
+    glViewport(0, 0, OpenGLPanel1->Width, OpenGLPanel1->Height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, OpenGLPanel1->Width, 0, OpenGLPanel1->Height);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    DrawMap();
+    DrawAircraft();
+
+    OpenGLPanel1->SwapBuffers();
+}
+//---------------------------------------------------------------------------
+void TMainViewForm::DrawMap()
+{
+    // 원본의 지도 그리기 로직 (g_EarthView, TileManager 등 사용)
+    // 이 부분은 MapSrc 라이브러리와 연동하여 구현 필요
+}
+//---------------------------------------------------------------------------
+void TMainViewForm::DrawAircraft()
+{
+    if (!model || !g_EarthView) return;
+
+    std::vector<TADS_B_Aircraft*> aircraftList = model->GetAllAircraft();
+    uint32_t selectedICAO = model->GetSelectedAircraftICAO();
+
+    for (const auto& ac : aircraftList) {
+        if (ac->HaveLatLon) {
+            int screenX, screenY;
+            // 지리적 좌표를 화면 좌표로 변환
+            g_EarthView->WorldToScreen(ac->Latitude, ac->Longitude, screenX, screenY);
+
+            // 화면 밖이면 그리지 않음
+            if (screenX < 0 || screenX > OpenGLPanel1->Width || screenY < 0 || screenY > OpenGLPanel1->Height) {
+                continue;
+            }
+
+            // 원본의 ntds2d.cpp 함수를 사용하여 항공기 심볼 그리기
+            DrawAirTrack(screenX, screenY, ac->Heading, UNKNOWN_FRIEND);
+
+            // 선택된 항공기일 경우 특별히 표시
+            if (ac->ICAO == selectedICAO) {
+                DrawTrackHook(screenX, screenY);
+            }
+        }
+    }
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainViewForm::OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift, int X, int Y)
+{
+    if (Button == mbLeft) {
+        isPanning = true;
+        lastMouseX = X;
+        lastMouseY = Y;
+    }
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainViewForm::OpenGLPanel1MouseMove(TObject *Sender, TShiftState Shift, int X, int Y)
+{
+    if (isPanning && controller) {
+        int deltaX = X - lastMouseX;
+        int deltaY = Y - lastMouseY;
+        // 로직을 직접 처리하지 않고 Controller에 위임
+        controller->HandleMapPan(deltaX, deltaY);
+        lastMouseX = X;
+        lastMouseY = Y;
+    }
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainViewForm::OpenGLPanel1MouseUp(TObject *Sender, TMouseButton Button, TShiftState Shift, int X, int Y)
+{
+    if (isPanning) {
+        isPanning = false;
+        // 드래그가 아닌 단순 클릭이었는지 확인
+        if (std::abs(X - lastMouseX) < 5 && std::abs(Y - lastMouseY) < 5) {
+            if (controller) {
+                // 항공기 선택 로직을 Controller에 위임
+                controller->HandleAircraftSelection(X, OpenGLPanel1->Height - Y);
+            }
+        }
+    }
+}
+//---------------------------------------------------------------------------
+void __fastcall TMainViewForm::RenderTimerTimer(TObject *Sender)
+{
+	// 주기적으로 오래된 항공기 제거 및 화면 갱신
+	if(model) model->RemoveStaleAircraft();
 	OpenGLPanel1->Invalidate();
 }
-
-void __fastcall TForm1::Timer1Timer(TObject *Sender)
+//---------------------------------------------------------------------------
+void TMainViewForm::PanMap(int deltaX, int deltaY)
 {
-}
-
-void __fastcall TForm1::ConnectButtonClick(TObject *Sender)
-{
-	if (theController)
-	{
-		std::string ip = AnsiString(IPAddress->Text).c_str();
-		int port = StrToIntDef(Port->Text, 30003);
-		theController->connectToServer(ip, port);
-	}
-}
-
-void __fastcall TForm1::Exit1Click(TObject *Sender)
-{
-    Close();
-}
-
-void __fastcall TForm1::InsertClick(TObject *Sender)
-{
-    if(AreaListView->Selected)
-        AreaListView->Selected->Selected = false;
-    AreaConfirm->ShowModal();
-}
-
-void __fastcall TForm1::DeleteClick(TObject *Sender)
-{
-    if(AreaListView->Selected)
-    {
-        // [수정] TArea 대신 AreaData 사용
-        AreaData *area = (AreaData*)AreaListView->Selected->Data;
-        delete area;
-        AreaListView->Selected->Delete();
+    if (g_EarthView) {
+        g_EarthView->MoveView(deltaX, -deltaY); // Y축 방향이 VCL과 OpenGL이 반대
+        OpenGLPanel1->Invalidate();
     }
 }
-
-void __fastcall TForm1::CompleteClick(TObject *Sender)
+//---------------------------------------------------------------------------
+void TMainViewForm::ZoomMap(int delta)
 {
-    if(AreaListView->Selected) {
-        AreaConfirm->ShowModal();
+    if (g_EarthView) {
+        // VCL의 WheelDelta는 보통 120의 배수
+        g_EarthView->Zoom(delta > 0 ? 1 : -1);
+        OpenGLPanel1->Invalidate();
     }
 }
-
-void __fastcall TForm1::CancelClick(TObject *Sender)
+//---------------------------------------------------------------------------
+TPointF TMainViewForm::ScreenToGeo(int screenX, int screenY)
 {
-    Close();
-}
-
-void __fastcall TForm1::OpenGLPanel1Paint(TObject *Sender)
-{
-	glClearColor(0.0, 0.0, 0.0, 0.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, OpenGLPanel1->Width, OpenGLPanel1->Height, 0, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	DrawAircrafts();
-	DrawLabels();
-
-	SwapBuffers(GetDC(OpenGLPanel1->Handle));
-}
-
-void TForm1::DrawAircrafts()
-{
-	if (!theController) return;
-	std::vector<AircraftInfo> aircraftToDraw = theController->getAllAircraftInfo();
-	for (const auto& acInfo : aircraftToDraw)
-	{
-		double screenX, screenY;
-		LatLonConv::convert(acInfo.lat, acInfo.lon, screenX, screenY, OpenGLPanel1->Width, OpenGLPanel1->Height);
-		if (acInfo.selected) { glColor3f(1.0, 1.0, 0.0); } else { glColor3f(0.0, 1.0, 0.0); }
-		glBegin(GL_QUADS);
-		glVertex2f(screenX - 5, screenY - 5); glVertex2f(screenX + 5, screenY - 5);
-		glVertex2f(screenX + 5, screenY + 5); glVertex2f(screenX - 5, screenY + 5);
-		glEnd();
+    if (g_EarthView) {
+        double lat, lon;
+        g_EarthView->ScreenToWorld(screenX, screenY, lat, lon);
+        return TPointF(lon, lat);
 	}
-}
-
-void TForm1::DrawLabels() {}
-
-void __fastcall TForm1::OpenGLPanel1MouseDown(TObject *Sender, TMouseButton Button, TShiftState Shift, int X, int Y)
-{
-	if (!theController) return;
-	unsigned int selectedIcao = 0;
-	std::vector<AircraftInfo> allAircraft = theController->getAllAircraftInfo();
-	for (const auto& acInfo : allAircraft)
-	{
-		double screenX, screenY;
-		LatLonConv::convert(acInfo.lat, acInfo.lon, screenX, screenY, OpenGLPanel1->Width, OpenGLPanel1->Height);
-		if (X >= screenX - 5 && X <= screenX + 5 && Y >= screenY - 5 && Y <= screenY + 5)
-		{
-			selectedIcao = acInfo.icao;
-			break;
-		}
-	}
-	theController->selectAircraft(selectedIcao);
-}
-
-void __fastcall TForm1::ObjectDisplayInit(TObject *Sender)
-{
-    // 이 이벤트 핸들러에 필요한 초기화 코드가 있다면 여기에 작성합니다.
-    // 현재는 비워두어도 오류는 해결됩니다.
-}
-void __fastcall TForm1::RenderTimerTimer(TObject *Sender)
-{
-    // Controller->Update(); // 주석 처리됨
-    // ObjectDisplay->Render(); // <-- 타이머가 돌 때마다 OpenGLPanel의 Render 함수를 호출
-    // ObjectDisplay->SwapBuffers(); // <-- 더블 버퍼링으로 화면에 표시
+    return TPointF(0, 0);
 }

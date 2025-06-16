@@ -1,4 +1,4 @@
-object AreaConfirm: TAreaConfirm
+object AreaDialog: TAreaDialog
   Left = 0
   Top = 0
   Caption = 'Comfirm'
